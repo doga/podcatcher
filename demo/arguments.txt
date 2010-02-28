@@ -1,0 +1,12 @@
+# Rebooting The News
+http://rebootnews.com/rss.xml
+
+# IT Conversations
+http://feeds.conversationsnetwork.org/channel/itc
+
+# Software Engineering Radio
+http://se-radio.net/rss
+
+#http://www.podshow.com/feeds/dailysourcecode.xml
+http://www.rocketboom.com/rss/wmv.xml
+
