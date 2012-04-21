@@ -6,8 +6,9 @@
 # Author: Doga Armangil, armangild@yahoo.com
 
 PODCATCHER_WEBSITE = 'http://podcatcher.rubyforge.org/'
-PODCATCHER_VERSION = '3.1.6alpha'
+PODCATCHER_VERSION = '3.1.6'
 
+# todo: allow files to be selected not only by its MIME type, but also other attributes. Example: --content '^video/ width:680-1024 height:400'
 # todo: --proxy option
 # todo: download at most one enclosure or media:content per rss item
 # todo: support for --content and --language options in search mode
@@ -24,7 +25,7 @@ PODCATCHER_VERSION = '3.1.6alpha'
 # todo: option to download shows concurrently
 # todo: "lock" directory to prevent concurrency issues
 # todo: option to throttle non-BitTorrent downloads
-# 3.1.6alpha: fixes a bug whereby a failed content download caused all other content from the same feed to be ignored
+# 3.1.6: fix a bug whereby a failed content download caused all other content from the same feed to be ignored, fix ruby 1.9 compatibility bug (String#each becomes String#each_line)
 # 3.1.5: updated --arguments file format (# now comments out line), updated sponsor message
 # 3.1.4: added publication date to content titles in generated playlists, added better handling of invalid URLs in feeds and subscription lists (such URLs are now simply ignored instead of causing the whole document to be skipped)
 # 3.1.3: --restrictednames option is now enabled by default, fixed directory name generation bug that allowed '!' character when --perfeed and --restrictednames options were used simultaneously, updated sponsor message
@@ -1446,14 +1447,14 @@ class Cache
 						content = OpenStruct.new
 						XPath.each(e2,"parent::/title/text()") do |node|
 							content.title = ""
-							node.value.each() do |e3| #remove line breaks
+							node.value.each_line() do |e3| #remove line breaks
 								content.title+= e3.chomp+" "
 							end
 							content.title.strip!
 						end
 						XPath.each(e2,"parent::/created/text()") do |node|
 							pub_date = ""
-							node.value.each() do |e3| #remove line breaks
+							node.value.each_line() do |e3| #remove line breaks
 								pub_date+= e3.chomp+" "
 							end
 							begin 
@@ -1496,7 +1497,7 @@ class Cache
 					#title
 					node = XPath.first(doc.dom,"/feed/title/text()")
 					feed_title = ""
-					node.value.each() do |e3| #remove line breaks
+					node.value.each_line() do |e3| #remove line breaks
 						feed_title += e3.chomp+" "
 					end
 					feed_title.strip!
@@ -1512,7 +1513,7 @@ class Cache
 							title = ''
 							XPath.each(e1,"title/text()") do |node|
 								title = ''
-								node.value.each() do |e3| #remove line breaks
+								node.value.each_line() do |e3| #remove line breaks
 									title+= e3.chomp+" "
 								end
 								title.strip!
@@ -1520,7 +1521,7 @@ class Cache
 							pub_date = nil
 							XPath.each(e1,"pubDate/text()") do |node|
 								pub_date = ""
-								node.value.each() do |e3| #remove line breaks
+								node.value.each_line() do |e3| #remove line breaks
 									pub_date+= e3.chomp+" "
 								end
 								begin 
@@ -1623,7 +1624,7 @@ class Cache
 					#title
 					node = XPath.first(doc.dom,"//channel/title/text()")
 					feed_title = ""
-					node.value.each() do |e3| #remove line breaks
+					node.value.each_line() do |e3| #remove line breaks
 						feed_title += e3.chomp+" "
 					end
 					feed_title.strip!
