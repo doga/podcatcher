@@ -1,12 +1,5 @@
-# Rebooting The News
-http://rebootnews.com/rss.xml
-
-# IT Conversations
-http://feeds.conversationsnetwork.org/channel/itc
+# Ruby5
+http://feeds.feedburner.com/Ruby5
 
 # Software Engineering Radio
-http://se-radio.net/rss
-
-#http://www.podshow.com/feeds/dailysourcecode.xml
-http://www.rocketboom.com/rss/wmv.xml
-
+http://feeds.feedburner.com/se-radio

@@ -5,8 +5,8 @@
 # http://opensource.org/licenses/gpl-license.php for more information.
 # Author: Doga Armangil, armangild@yahoo.com
 
-PODCATCHER_WEBSITE = 'http://podcatcher.rubyforge.org/'
-PODCATCHER_VERSION = '3.1.6'
+PODCATCHER_WEBSITE = 'https://github.com/doga/podcatcher'
+PODCATCHER_VERSION = '3.1.7'
 
 # todo: allow files to be selected not only by its MIME type, but also other attributes. Example: --content '^video/ width:680-1024 height:400'
 # todo: --proxy option
@@ -25,7 +25,8 @@ PODCATCHER_VERSION = '3.1.6'
 # todo: option to download shows concurrently
 # todo: "lock" directory to prevent concurrency issues
 # todo: option to throttle non-BitTorrent downloads
-# 3.1.6: fix a bug whereby a failed content download caused all other content from the same feed to be ignored, fix ruby 1.9 compatibility bug (String#each becomes String#each_line)
+# 3.1.7: move the code repository from rubyforge to github, remove sponsor message, disable voting and checking for updates by default
+# 3.1.6alpha: fixes a bug whereby a failed content download caused all other content from the same feed to be ignored
 # 3.1.5: updated --arguments file format (# now comments out line), updated sponsor message
 # 3.1.4: added publication date to content titles in generated playlists, added better handling of invalid URLs in feeds and subscription lists (such URLs are now simply ignored instead of causing the whole document to be skipped)
 # 3.1.3: --restrictednames option is now enabled by default, fixed directory name generation bug that allowed '!' character when --perfeed and --restrictednames options were used simultaneously, updated sponsor message
@@ -111,10 +112,12 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-Visit http://podcatcher.rubyforge.org/ for more information.
+Visit $website for more information.
 
 Usage: #{$0} [options] [arguments] 
 END
+
+opt.DESCRIPTION.gsub! '$website', PODCATCHER_WEBSITE
 
 opt.dir = Pathname.new Dir.pwd
 opt.CACHEDIR= 'cache'
@@ -134,8 +137,8 @@ opt.feeds = 1_000
 opt.FUNCTIONS = [:download, :search]
 opt.function = opt.FUNCTIONS[0]
 opt.per_feed = false
-opt.vote = true
-opt.check_for_update = true
+opt.vote = false
+opt.check_for_update = false
 opt.ORDERS = [:random, :sequential, :alphabetical, :reverse]
 opt.order = opt.ORDERS[0]
 opt.horizon=nil
@@ -463,18 +466,18 @@ option_parser = OptionParser.new() do |c|
 		"Enabled by default.\n") do |e|
 		opt.restricted_names = e
 	end
-	c.on("--[no-]checkforupdate", 
-		"Check once every #{UPDATE_CHECK_INTERVAL} months if a newer ",
-		"version is available and display an ",
-		"informational message. Enabled by default.\n") do |e|
-		opt.check_for_update = e
-	end
-	c.on("--[no-]vote", 
-		"Automatically vote for the downloaded",
-		"podcasts at podcatcherstats.com.",
-		"Enabled by default.\n") do |e|
-		opt.vote = e
-	end
+	# c.on("--[no-]checkforupdate", 
+	# 	"Check once every #{UPDATE_CHECK_INTERVAL} months if a newer ",
+	# 	"version is available and display an ",
+	# 	"informational message. Disabled by default.\n") do |e|
+	# 	opt.check_for_update = e
+	# end
+	# c.on("--[no-]vote", 
+	# 	"Automatically vote for the downloaded",
+	# 	"podcasts at podcatcherstats.com.",
+	# 	"Disabled by default.\n") do |e|
+	# 	opt.vote = e
+	# end
 	c.on("-A", "--arguments FILENAME_OR_URL", 
 		"Read arguments from specified file.",
 		"Rules:",
@@ -682,9 +685,12 @@ option_parser = OptionParser.new() do |c|
 	end
 	c.separator ""
 	c.separator "Usage examples:"
-	c.separator "    #{$0} --dir ~/podcasts http://podcastalley.com/PodcastAlleyTop50.opml > latest.m3u"
 	c.separator ""
-	c.separator "    #{$0} --dir ~/podcasts rss.xml atom.xml *.pcast feeds.opml http://host/second.opml > latest.m3u"
+	c.separator "    #{$0} http://feeds.feedburner.com/Ruby5"
+	c.separator ""
+	c.separator "    #{$0} -O options.yaml -A feeds.txt"
+	c.separator ""
+	c.separator "    #{$0} --dir ~/podcasts http://www.npr.org/podcasts.opml"
 	c.separator ""
 	c.separator "    #{$0} --dir ~/podcasts --strategy cache > cache.m3u"
 	c.separator ""
@@ -692,9 +698,9 @@ option_parser = OptionParser.new() do |c|
 	c.separator ""
 	c.separator "    #{$0} -vd ~/podcasts -s 500 -m 10_000 -t tox feeds.opml > latest.tox"
 	c.separator ""
-	c.separator "    #{$0} -vF search 'book health daily source code' 'http://www.ipodder.org/discuss/reader$4.opml' > results.opml"
+	c.separator "    #{$0} -vF search news http://www.bbc.co.uk/podcasts.opml > bbc_news.opml"
 	c.separator ""
-	c.separator "    #{$0} -F search -f 12 mac http://www.podfeed.net/opml/directory.opml > results.opml"
+	c.separator "    #{$0} -F search -f 12 news http://www.npr.org/podcasts.opml > npr_news.opml"
 end
 option_parser.parse!
 
@@ -1658,7 +1664,7 @@ class Cache
 			rescue Interrupt, SystemExit
 				exit 1
 			rescue Exception
-				$stderr.puts "Error: skipping document because of an internal error"
+				$stderr.puts "Error: skipping document because of an internal error #{$@}"
 			end
 			doc = nil
 		end
@@ -2337,7 +2343,7 @@ class Query
 							$stderr.puts "Found: #{title} (relevance: #{path.relevance})" if @opt.verbose
 							if title
 								path.title = ""
-								title.value.each() do |e3| #remove line breaks
+								title.value.each_line() do |e3| #remove line breaks
 									path.title+= e3.chomp+" "
 								end
 								path.title.strip!
@@ -2370,7 +2376,7 @@ class Query
 							$stderr.puts "Found: #{title} (relevance: #{path.relevance})" if @opt.verbose
 							if title
 								path.title = ""
-								title.value.each() do |e3| #remove line breaks
+								title.value.each_line() do |e3| #remove line breaks
 									path.title+= e3.chomp+" "
 								end
 								path.title.strip!
@@ -2475,12 +2481,12 @@ opt.upload_rate *= 1024 if opt.upload_rate
 opt.itemsize *= 1_000_000 
 arguments = arguments + ARGV
 
-unless opt.check_for_update
-	$stderr.puts "Disabling update check." if opt.verbose
+if opt.check_for_update
+	$stderr.puts "Enabling update check." if opt.verbose
 end
 
-unless opt.vote
-	$stderr.puts "Disabling the sending of anonymous usage statistics." if opt.verbose
+if opt.vote
+	$stderr.puts "Enabling the sending of anonymous usage statistics." if opt.verbose
 end
 
 begin 
@@ -2505,7 +2511,7 @@ if opt.check_for_update
 	update.check
 end
 
-if opt.verbose
+if opt.verbose and false
         $stderr.puts ""
         $stderr.puts "   *********************************************************************"
         $stderr.puts "   ****   Qworum - A platform for web-based services      (sponsor) ****"
