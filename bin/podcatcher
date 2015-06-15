@@ -1718,7 +1718,7 @@ class Cache
 				feed.compact!
 			end
 		end
-		if @opt.strategy == :new or @opt.strategy == :one 
+		if @opt.strategy == :new or @opt.strategy == :one or @opt.strategy == :conveyor
 			feeds.each() do |feed|
 				itemsize = 0
 				index = nil
@@ -1854,6 +1854,11 @@ class Cache
 				unless content
 					itemsize = 0
 					next
+				end
+				#special handling for cache full for conveyor strategy
+				if @opt.strategy == :conveyor and @opt.size and content.size+inc+total > @opt.size
+				    $stderr.puts "Cache has reached maxumum size." if @opt.verbose
+					break
 				end
 				#make place in cache
 				while @opt.size and content.size+inc+total > @opt.size
