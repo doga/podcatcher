@@ -126,7 +126,7 @@ opt.memsize = 1_000
 opt.empty = false
 opt.simulate = false
 opt.verbose = false
-opt.STRATEGIES = [:one, :new, :back_catalog, :all, :chron, :chron_one, :chron_all, :cache]
+opt.STRATEGIES = [:one, :new, :back_catalog, :conveyor, :all, :chron, :chron_one, :chron_all, :cache]
 opt.strategy = opt.STRATEGIES[0]
 opt.retries = 1
 opt.torrent_dir = nil
@@ -266,6 +266,12 @@ option_parser = OptionParser.new() do |c|
 		" recent content to older content (may ",
 		" download more than one content file per",
 		" feed),",
+		"* conveyor: like back_catalog, but downloads",
+		" only if there are less than feeds parameter",
+		" content files in the cache per feed.",
+		" Never deletes files from cache but stops ",
+		" if cache grows to size specified by size ",
+		" parameter.",
 		"* one: download one content file (not ",
 		" already downloaded) for each feed, with a ",
 		" preference for recent content,",
