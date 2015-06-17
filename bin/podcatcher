@@ -134,6 +134,7 @@ opt.rubytorrent = false
 opt.upload_rate = nil #10
 opt.itemsize = 0
 opt.feeds = 1_000
+opt.files = 1_000
 opt.FUNCTIONS = [:download, :search]
 opt.function = opt.FUNCTIONS[0]
 opt.per_feed = false
@@ -267,7 +268,7 @@ option_parser = OptionParser.new() do |c|
 		" download more than one content file per",
 		" feed),",
 		"* conveyor: like back_catalog, but downloads",
-		" only if there are less than feeds parameter",
+		" only if there are less than files parameter",
 		" content files in the cache per feed.",
 		" Never deletes files from cache but stops ",
 		" if cache grows to size specified by size ",
@@ -404,7 +405,15 @@ option_parser = OptionParser.new() do |c|
 		opt.feeds = e.to_i
 		opt.feeds = nil if opt.feeds<1
 	end
-	c.on("-T", "--torrentdir DIR", 
+	c.on("-n", "--files N",
+		"Do not download more than N content ",
+		"files per feed. Only works with conveyor",
+		"strategy. 0 means unbounded.",
+        "Default value is #{opt.files}.\n") do |e|
+		opt.files = e.to_i
+		opt.files = nil if opt.files<1
+	end
+	c.on("-T", "--torrentdir DIR",
 		"Copy torrent files to directory DIR.",
 		"The handling of torrents through an",
 		"external BitTorrent client is left to",
@@ -647,6 +656,11 @@ option_parser = OptionParser.new() do |c|
 					if value.instance_of?(Fixnum)
 						opt.feeds = value
 						opt.feeds = nil if opt.feeds<1
+					end
+				when 'files'
+					if value.instance_of?(Fixnum)
+						opt.files = value
+						opt.files = nil if opt.files<1
 					end
 				when 'horizon'
 					begin
@@ -1857,7 +1871,7 @@ class Cache
 				end
 				#special handling for cache full for conveyor strategy
 				if @opt.strategy == :conveyor and @opt.size and content.size+inc+total > @opt.size
-				    $stderr.puts "Cache has reached maxumum size." if @opt.verbose
+				    $stderr.puts "Cache has reached maximum size." if @opt.verbose
 					break
 				end
 				#make place in cache
@@ -2085,12 +2099,18 @@ private
 			res = nil
 		end
 		res
-	end 
+	end
+	def restrictName(dir)
+		if @opt.restricted_names
+			return dir.sub(/[\\\/:*?\"<>|!]/, ' ').gsub(/-+/,'-').gsub(/\s+/,' ').strip
+		else
+			return dir
+		end
+	end
 	def filename(content, dir) #produce filename for content to be downloaded
 		begin #per-feed subfolder
 			if @opt.per_feed and content.feed_title and content.feed_title.size > 0
-				newdir = dir+content.feed_title
-				newdir = dir+content.feed_title.gsub(/[\\\/:*?\"<>|!]/, ' ').gsub(/-+/,'-').gsub(/\s+/,' ').strip if @opt.restricted_names
+				newdir = restrictName(dir+content.feed_title)
 				if newdir.exist?
 					if newdir.directory?
 						dir = newdir
