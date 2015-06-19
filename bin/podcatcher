@@ -2110,7 +2110,7 @@ private
 	def filename(content, dir) #produce filename for content to be downloaded
 		begin #per-feed subfolder
 			if @opt.per_feed and content.feed_title and content.feed_title.size > 0
-				newdir = restrictName(dir+content.feed_title)
+				newdir = dir+restrictName(content.feed_title)
 				if newdir.exist?
 					if newdir.directory?
 						dir = newdir
