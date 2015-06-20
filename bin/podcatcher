@@ -1733,6 +1733,7 @@ class Cache
 			end
 		end
 		if @opt.strategy == :conveyor
+			@opt.per_feed = true
 			feeds.each() do |feed|
 			    existing_files = 0
 				if feed.size > 0 && @opt.files && @opt.files > 0
