@@ -55,7 +55,14 @@ Options:
                                       recent content to older content (may 
                                       download more than one content file per
                                       feed),
-                                     * one: download one content file (not 
+                                     * conveyor: like back_catalog, but downloads
+                                      only if feed has less than files parameter
+                                      content files in the cache.
+                                      Selecting conveyor strategy forces perfeed
+                                      mode on. Files are never deleted from
+                                      cache; conveyor strategy simply stops if
+                                      the maximum cache size is reached.
+                                     * one: download one content file (not
                                       already downloaded) for each feed, with a 
                                       preference for recent content,
                                      * all: download all content, with a 
@@ -139,6 +146,10 @@ Options:
                                      or return the first N relevant feeds
                                      (when using the search function).
                                      0 means unbounded. Default value is 1000.
+    -n, --files N                    Do not download more than N content
+                                     files per feed. This parameter works only
+                                     with conveyor strategy. 0 means unbounded.
+                                     Default value is 1000.
     -T, --torrentdir DIR             Copy torrent files to directory DIR.
                                      The handling of torrents through an
                                      external BitTorrent client is left to
