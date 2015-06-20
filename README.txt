@@ -55,11 +55,11 @@ Options:
                                       recent content to older content (may 
                                       download more than one content file per
                                       feed),
-                                     * conveyor: like back_catalog, but downloads
-                                      only if feed has less than files parameter
-                                      content files in the cache.
-                                      Selecting conveyor strategy forces perfeed
-                                      mode on. Files are never deleted from
+                                     * conveyor: like back_catalog, but
+                                      downloads up to -n number of files in the
+                                      cache per each feed.
+                                      Selecting conveyor strategy forces -p
+                                      mode on. Files are never deleted from the
                                       cache; conveyor strategy simply stops if
                                       the maximum cache size is reached.
                                      * one: download one content file (not
