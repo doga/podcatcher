@@ -1766,7 +1766,7 @@ class Cache
 				end
 			end
 		end
-		if @opt.strategy == :new or @opt.strategy == :one or @opt.strategy == :conveyor
+		if @opt.strategy == :new or @opt.strategy == :one
 			feeds.each() do |feed|
 				itemsize = 0
 				index = nil
