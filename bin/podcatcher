@@ -1739,7 +1739,6 @@ class Cache
 					feeddir = restrictName(feed[0].feed_title)
 					@cache.each() do |e|
 						dir = File.split(File.split(e.file)[0])[1]
-						print "'#{dir}' == '#{feeddir}' #{existing_files}\n"
 						if dir == feeddir
 							existing_files += 1
 						end
@@ -1748,6 +1747,18 @@ class Cache
 					if files_needed < 0
 						feed.clear
 					else
+						if @opt.itemsize && @opt.itemsize > 0
+							itemsize = 0
+							for i in 0...feed.size
+								itemsize += feed[i].size
+								if i+1 > files_needed
+									files_needed = i+1
+								end
+								if itemsize >= @opt.itemsize
+									break
+								end
+							end
+						end
 						feed.slice! files_needed...feed.size
 					end
 				end
