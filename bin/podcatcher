@@ -410,7 +410,7 @@ option_parser = OptionParser.new() do |c|
 		"Do not download more than N content ",
 		"files per feed. This parameter works only",
 		"with conveyor strategy. 0 means unbounded.",
-        "Default value is #{opt.files}.\n") do |e|
+		"Default value is #{opt.files}.\n") do |e|
 		opt.files = e.to_i
 		opt.files = nil if opt.files<1
 	end
