@@ -407,8 +407,8 @@ option_parser = OptionParser.new() do |c|
 	end
 	c.on("-n", "--files N",
 		"Do not download more than N content ",
-		"files per feed. Only works with conveyor",
-		"strategy. 0 means unbounded.",
+		"files per feed. This parameter works only",
+		"with conveyor strategy. 0 means unbounded.",
         "Default value is #{opt.files}.\n") do |e|
 		opt.files = e.to_i
 		opt.files = nil if opt.files<1
