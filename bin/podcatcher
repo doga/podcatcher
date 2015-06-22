@@ -1345,7 +1345,8 @@ class Cache
 	def download(download_url, content)
 		content.redirection_url = nil
 		done = false
-		for redirect_count in 0...10
+		redirect_count = 0
+		while redirect_count < 10 and not done
 			Net::HTTP.start(download_url.host, download_url.port, :use_ssl => download_url.scheme == 'https') do |http|
 				request = Net::HTTP::Get.new download_url.request_uri #.request_uri is 1.9 interim hack https://bugs.ruby-lang.org/issues/7973
 				request['User-Agent'] = USER_AGENT
@@ -1365,6 +1366,7 @@ class Cache
 						$stderr.puts "Redirected to #{redirection_url}" if @opt.verbose
 						content.redirection_url = redirection_url # content.redirection_url is used for finding the correct filename in case of redirection
 						download_url = redirection_url
+						redirect_count += 1
 					else
 						raise "Unknown response #{response} from #{download_url}"
 					end
