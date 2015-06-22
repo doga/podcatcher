@@ -1339,8 +1339,40 @@ class Cache
 		@cache.sort!() do |e,e2|
 			e.file.mtime() <=> e2.file.mtime()
 		end
-	end 
-	def createplaylist(urls) 
+	end
+	#Work around bug in open-uri redirect handling. http://stackoverflow.com/q/27407938/1148030
+	#http://docs.ruby-lang.org/en/2.0.0/Net/HTTP.html#class-Net::HTTP-label-Response+Data
+	def download(download_url, content)
+		content.redirection_url = nil
+		done = false
+		for redirect_count in 0...10
+			Net::HTTP.start(download_url.host, download_url.port, :use_ssl => download_url.scheme == 'https') do |http|
+				request = Net::HTTP::Get.new download_url
+				request['User-Agent'] = USER_AGENT
+				request['Referer'] = content.feedurl if content.feedurl and (content.feedurl =~ %r{^http:} or content.feedurl =~ %r{^ftp:})
+				response = http.request(request)
+				case response
+				when Net::HTTPSuccess
+					content.file = filename(content, @cache_dir)
+					content.file.open("wb") do |fout|
+						response.read_body do |chunk|
+							fout.write chunk
+						end
+					end
+					done = true
+				when Net::HTTPRedirection
+					redirection_url = URI(response['location'])
+					$stderr.puts "Redirected to #{redirection_url}" if @opt.verbose
+					content.redirection_url = redirection_url # content.redirection_url is used for finding the correct filename in case of redirection
+					download_url = redirection_url
+				else
+					raise "Unknown response #{response} from #{download_url}"
+				end
+			end
+		end
+		raise ArgumentError, 'too many HTTP redirects' if not done
+	end
+	def createplaylist(urls)
 		playlist = Playlist.new @opt.playlist_type
 		if @opt.strategy == :cache
 			playlist.start
@@ -1911,29 +1943,9 @@ class Cache
 							end
 						else 
 							$stderr.puts "Fetching: #{content.url} (#{content.size.to_s} bytes)" if @opt.verbose and i == 1
-							if not @opt.simulate 
-								headers = {"User-Agent" => USER_AGENT}
-								headers["Referer"] = content.feedurl if content.feedurl and (content.feedurl =~ %r{^http:} or content.feedurl =~ %r{^ftp:})
+							if not @opt.simulate
 								content.download_url = content.url unless content.download_url
-								open(content.download_url, headers) do |fin|
-									if fin.base_uri.instance_of?(URI::HTTP) 
-										if fin.status[0] =~ Regexp.new('^3') 
-											content.download_url = fin.meta['location']
-											raise "redirecting"
-										elsif fin.status[0] !~ Regexp.new('^2') 
-											raise 'failed'
-										end
-									end
-									# write content to cache
-									content.redirection_url = fin.base_uri.to_s # content.redirection_url is used for finding the correct filename in case of redirection
-									content.redirection_url = nil if content.redirection_url.eql?(content.url)
-									content.file = filename(content, @cache_dir)
-									content.file.open("wb") do |fout|
-										fin.each_byte() do |b|
-											fout.putc b
-										end
-									end
-								end
+								download(URI(content.download_url), content)
 								content.size = content.file.size
 								@history.add content 
 							end
@@ -1946,7 +1958,7 @@ class Cache
 					rescue SystemExit
 						exit 1
 					rescue Exception
-					end 
+					end
 					$stderr.puts "Attempt #{i} aborted" if @opt.verbose
 					if content.file and i == @opt.retries
 						if content.file.exist?
@@ -2058,7 +2070,7 @@ private
 			rescue SystemExit
 				exit 1
 			rescue Exception
-			end 
+			end
 			$stderr.puts "Attempt #{i} aborted" if @opt.verbose
 			doc = ""
 			sleep 5
