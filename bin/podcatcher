@@ -1347,7 +1347,7 @@ class Cache
 		done = false
 		for redirect_count in 0...10
 			Net::HTTP.start(download_url.host, download_url.port, :use_ssl => download_url.scheme == 'https') do |http|
-				request = Net::HTTP::Get.new download_url
+				request = Net::HTTP::Get.new download_url.request_uri #.request_uri is 1.9 interim hack https://bugs.ruby-lang.org/issues/7973
 				request['User-Agent'] = USER_AGENT
 				request['Referer'] = content.feedurl if content.feedurl and (content.feedurl =~ %r{^http:} or content.feedurl =~ %r{^ftp:})
 				response = http.request(request)
