@@ -2,7 +2,7 @@
 Gem::Specification.new do |s|
   # Metadata #############################################################
   s.name        = 'podcatcher'
-  s.version     = '3.1.8'
+  s.version     = '3.1.9'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
@@ -14,15 +14,14 @@ Gem::Specification.new do |s|
   #if s.respond_to? :metadata=
   s.metadata = {
     # List of RubyGems.org metadata that can be set manually on the gem webpage.
-    # Can those be set automatically through the gem metadata?
     # - Source Code URL
     'code' => 'https://github.com/doga/podcatcher',
-    # - Wiki URL
-    'wiki' => nil,
-    # - Mailing List URL
-    'mail' => nil,
     # - Documentation URL
     'docs' => 'https://github.com/doga/podcatcher',
+    # - Wiki URL
+    'wiki' => '',
+    # - Mailing List URL
+    'mail' => '',
     # - Bug Tracker URL
     'bugs' => 'https://github.com/doga/podcatcher/issues'
   }
@@ -35,7 +34,8 @@ Gem::Specification.new do |s|
   # Implementation #######################################################
   s.files = Dir[
     'bin/*', 
-    'README*', '*-LICENSE*'
+    'README*', '*-LICENSE*',
+    'certs/*.pem'
   ]
   bindir = 'bin'
   s.bindir = bindir # 'bin' is the default binary directory
@@ -49,4 +49,9 @@ Gem::Specification.new do |s|
 
   # s.platform = Gem::Platform::RUBY # Gem::Platform::RUBY is the default, indicates a pure-Ruby gem.
   s.required_ruby_version = '>= 1.8.2'
+
+
+  # Sign gem #############################################################
+  s.cert_chain = ['certs/doga.pem']
+  s.signing_key = File.expand_path("~/.ssh/gem-private_key.pem") if $0 =~ /gem\z/
 end
