@@ -31,7 +31,7 @@ $ # Optional security step (do this once)
 $ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/podcatcher/master/certs/doga.pem)
 $
 $ # Install
-$ # Optional security paramater: --trust-policy HighSecurity
+$ # (Optional security paramater: --trust-policy HighSecurity)
 $ gem install podcatcher --trust-policy HighSecurity
 $
 $ # Check the used version
