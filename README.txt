@@ -36,7 +36,7 @@ $ gem install podcatcher --trust-policy HighSecurity
 $
 $ # Check the used version
 $ podcatcher --version
-3.1.12
+3.1.13
 $
 
 

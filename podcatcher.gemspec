@@ -2,7 +2,7 @@
 Gem::Specification.new do |s|
   # Metadata #############################################################
   s.name        = 'podcatcher'
-  s.version     = '3.1.12'
+  s.version     = '3.1.13'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
