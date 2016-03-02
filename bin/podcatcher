@@ -6,7 +6,7 @@
 # Author: Doga Armangil, armangild@yahoo.com
 
 PODCATCHER_WEBSITE = 'https://github.com/doga/podcatcher'
-PODCATCHER_VERSION = '3.1.13'
+PODCATCHER_VERSION = '3.1.14'
 
 # todo: allow files to be selected not only by its MIME type, but also other attributes. Example: --content '^video/ width:680-1024 height:400'
 # todo: --proxy option
@@ -25,49 +25,6 @@ PODCATCHER_VERSION = '3.1.13'
 # todo: option to download shows concurrently
 # todo: "lock" directory to prevent concurrency issues
 # todo: option to throttle non-BitTorrent downloads
-# 3.1.10: make public certificate world-readable
-# 3.1.9: digitally sign the Ruby gem
-# 3.1.8: make podcatcher a Ruby gem
-# 3.1.7: move the code repository from rubyforge to github, remove sponsor message, disable voting and checking for updates by default
-# 3.1.6alpha: fixes a bug whereby a failed content download caused all other content from the same feed to be ignored
-# 3.1.5: updated --arguments file format (# now comments out line), updated sponsor message
-# 3.1.4: added publication date to content titles in generated playlists, added better handling of invalid URLs in feeds and subscription lists (such URLs are now simply ignored instead of causing the whole document to be skipped)
-# 3.1.3: --restrictednames option is now enabled by default, fixed directory name generation bug that allowed '!' character when --perfeed and --restrictednames options were used simultaneously, updated sponsor message
-# 3.1.2: modified the help text that appears when --help option is used, updated sponsor message
-# 3.1.1: fixed a bug in verbose mode that caused content to be listed twice if it is declared as both RSS enclosure and Media RSS content, changed the sponsor message
-# 3.1.0: added support for yyyy and yyyy.mm formats for --horizon parameter
-# 3.0.0: added the --cachedir option for explicitely specifying cache directory, added --language option for selecting feeds by language, added the --horizon option that prevents the downloading of content older than a given date, added --restrictednames option for using content subdirectory and file names that are acceptable for restrictive filesystems such as VFAT, http://search.yahoo.com/mrss is now accepted as namespace for RSS Media module, fixed a bug in update checking (flash now only appears if podcatcherstats version is newer than current one), fixed a bug that caused votes to be sent for feeds that have file URLs or filenames.
-# 2.0.1: fixed Yahoo Media RSS module handling bug
-# 2.0.0: fixed a bug that caused the generation of invalid playlists for feeds containing control characters (such as Ctrl-M) in their title or in the title of one of its entries, added --order option that determines feed order, changed default feed order from 'sequential' to 'random', all content is downloaded by default (not only MP3), changed default cache size to 512MB, added support for the Yahoo Media RSS module (http://search.yahoo.com/mrss), added strategies for downloading content in chronological order (chron_one, chron, chron_all), added -C option that specifies the types of content that are to be received (overrides the default types), added -o option for reading options from a file, added -A option for reading arguments from a file, changed the default download strategy to 'one', added -V alias for --version option, fixed a bug that caused the order of feeds to be ignored in OPML files, fixed a bug that caused downloads of some video files to fail in vodcatcher mode, added --checkforupdate option for informing the user when a new version is available, added --vote option for voting in favour of downloaded podcasts at podcatcherstats.com
-# 1.3.7: added status code and content type check when downloading a media file using HTTP, removed some debugging comments
-# 1.3.5: fixed a bug that caused wrong cache filenames to be generated when an HTTP redirection was received from a server, added Operating System and processor information to the User-Agent HTTP header sent to web servers
-# 1.3.4: fixed the help message
-# 1.3.3: added the -p option that assigns a separate cache subfolder to each feed
-# 1.3.2: bug fix
-# 1.3.1: added robust handling of subscription lists that directly link to media files (such links are now ignored), fixed an OPML generation bug for interrupted searches
-# 1.3.0: added search function for online podcast directories such as the iPodder podcast directory, added xspf support
-# 1.2.0: added support for decentralized subscription lists (i.e. subscription lists that point to other subscription lists), fixed a bug that sometimes caused an invalid Referer header to be sent in HTTP requests, added the -f option, added support for Atom feeds that do not list items in reverse chronological order, added support for RSS/Atom feeds as command line arguments, added support for Extended M3U and Extended PLS playlist formats, M3U playlists can now also be generated in vodcatcher mode, m3u is now the default type in vodcatcher mode, added "cache" strategy which deprecates -c option
-# 1.1.1: added support for iTunes .pcast subscription files
-# 1.1.0: names of media files downloaded via BitTorrent are now preserved, done some refactoring so that the script can function as a vodcatcher
-# 1.0.4: added support for RSS feeds that do not list items in reverse chronological order
-# 1.0.3: fixed an RSS parsing bug that caused enclosures of some feeds to be ignored
-# 1.0.2: fixed some minor MP3 file naming bugs
-# 1.0.1: names of downloaded MP3 files are now preserved
-# 1.0.0: added ATOM support
-# 0.4.0: added duplicate removal for MP3, RSS/Atom and OPML URLs and pathnames; added the -i option that attempts to increase the listen-time given to podcasts which frequently release short shows
-# 0.3.2: fixed BitTorrent handling bug
-# 0.3.1: added robust handling of network exceptions, removed support for Ctrl-C to terminate execution
-# 0.3.0: added support for opml format used by podcastalley, added podcast title information in playlists, reduced RAM usage by not loading the history file in memory, history file and playlist are now updated after each download
-# 0.2.1: added support for Ctrl-C to terminate execution; added robust handling of some bad command line arguments; (James Carter patch) fixed the "OPML truncation" issue where a bad RSS feed was considered the last of the list
-# 0.2.0: added a new download strategy ("one"); added support for more than one OPML argument, fixed some issues
-# 0.1.7: bug fix
-# 0.1.6: added internal Bittorrent support, fixed flawed handling of some exceptions
-# 0.1.5: changed -d option description, added external handling of Bittorrent files
-# 0.1.4: bug-fix, robust handling of bad //enclosure/@length attributes, handling of relative enclosure URLs
-# 0.1.3: podcast download strategies (and changed default), download retries
-# 0.1.2: added TOX playlist support, added HTTP and FTP support for the OPML parameter, done some code clean-up
-# 0.1.1: fixed RSS parsing issue
-# 0.1.0: initial version
 
 require 'uri'
 require 'open-uri'

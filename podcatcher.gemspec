@@ -1,8 +1,10 @@
 # Gem description, including dependencies
+# (see http://guides.rubygems.org/specification-reference/)
+
 Gem::Specification.new do |s|
   # Metadata #############################################################
   s.name        = 'podcatcher'
-  s.version     = '3.1.13'
+  s.version     = '3.1.14'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
@@ -30,6 +32,9 @@ Gem::Specification.new do |s|
   s.has_rdoc = false # 
   s.extra_rdoc_files = []
   #s.rdoc_options << '--title' << 'Jsonapi for Rails'
+
+  # This message will be displayed after the gem is installed.
+  s.post_install_message = "Congratulations! `podcatcher --version` shell command should now work."
 
   # Implementation #######################################################
   s.files = Dir[
