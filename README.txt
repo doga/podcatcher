@@ -24,7 +24,25 @@ target different directories.
 
 Visit https://github.com/doga/podcatcher for more information.
 
-Usage: podcatcher [options] [arguments] 
+
+Installation
+------------
+$ # Optional security step (do this once)
+$ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/podcatcher/master/certs/doga.pem)
+$
+$ # Install
+$ # Optional security paramater: --trust-policy HighSecurity
+$ gem install podcatcher --trust-policy HighSecurity
+$
+$ # Check the used version
+$ podcatcher --version
+3.1.11
+$
+
+
+Usage
+-----
+podcatcher [options] [arguments] 
 
 Options:
     -d, --dir DIR                    Directory for storing application state.
@@ -207,43 +225,13 @@ Usage examples:
     podcatcher -F search -f 12 news http://www.npr.org/podcasts.opml > npr_news.opml
 
 
-Requirements
-------------
-Ruby 1.8.2 or later.
-
-
-Installation
-------------
-1. Install the most recent Ruby distribution. Ruby is available on many
-operating systems such as Windows, MacOS and Linux. A good starting point
-is http://www.ruby-lang.org/en/ , and for Linux it is worth taking a look 
-at an RPM repository such as http://www.rpmseek.com/ (package name ruby).
-
-2. Extract to disk the podcatcher directory from the TGZ file.
-
-3. (Optional, for internal BitTorrent support) Download the most recent
-RubyTorrent release from http://rubyforge.org/projects/rubytorrent/ , 
-add its installation directory to $RUBYLIB (for Linux).
-
-4. (Optional, for Linux users) Add the podcatcher/bin subdirectory to $PATH.
-
-
 Support
 -------
 Please use https://github.com/doga/podcatcher for bug reports
 and feature requests. 
 
-Alternatively, you can send me an email to the address listed below.
-
 
 License
 -------
-Armangil's podcatcher is released under the GNU General Public Licence. 
-Please see http://opensource.org/licenses/gpl-license.php for more information.
+Armangil's podcatcher is released under the MIT Licence. 
 
-
-Author
-------
-Doga Armangil, armangild@yahoo.com
-
-[November 2014]
