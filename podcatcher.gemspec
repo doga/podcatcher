@@ -1,10 +1,12 @@
 # Gem description, including dependencies
 # (see http://guides.rubygems.org/specification-reference/)
 
+# TODO: add man pages
+
 Gem::Specification.new do |s|
   # Metadata #############################################################
   s.name        = 'podcatcher'
-  s.version     = '3.1.14'
+  s.version     = '3.1.15'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
@@ -40,6 +42,7 @@ Gem::Specification.new do |s|
   s.files = Dir[
     'bin/*', 
     'README*', '*-LICENSE*',
+    'man/*.[15]',
     'certs/*.pem'
   ]
   bindir = 'bin'

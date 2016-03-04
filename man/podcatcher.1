@@ -1,0 +1,240 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PODCATCHER" "1" "March 2016" "Doga Armangil" "Podcatcher Manual"
+.
+.SH "NAME"
+\fBpodcatcher\fR \- podcast client for the command line
+.
+.SH "SYNOPSIS"
+\fBpodcatcher \-h\fR
+.
+.br
+\fBpodcatcher \-\-help\fR
+.
+.br
+\fBpodcatcher \-V\fR
+.
+.br
+\fBpodcatcher \-\-version\fR
+.
+.br
+\fBpodcatcher\fR [\fB\-vepa\fR][\fB\-d\fR \fIdir\fR][\fB\-D\fR \fIcachedir\fR][\fB\-s\fR \fIcachesize\fR][\fB\-S\fR \fIstrategy\fR][\fB\-C\fR \fImediatype\fR][\fB\-L\fR \fIlang\fR][\fB\-H\fR \fIsince\fR][\fB\-r\fR \fIretries\fR][\fB\-t\fR \fIoutputformat\fR][\fB\-m\fR \fImemsize\fR][\fB\-o\fR \fIfeedorder\fR][\fB\-F\fR \fIfunction\fR][\fB\-f\fR \fIdllimit\fR][\fB\-T\fR \fItorrentdir\fR][\fB\-i\fR \fIitemsize\fR][\fB\-\-restrictednames\fR][\fB\-A\fR \fIsourcelistfile\fR][\fB\-O\fR \fIoptionsfile\fR] [\fIsourcefile\fR]\.\.\.
+.
+.SH "DESCRIPTION"
+\fBpodcatcher\fR can download any type of content that is enclosed in RSS or Atom files, such as audio, video and image content\. A search function for subscribing to feeds is also included\.
+.
+.P
+\fBpodcatcher\fR provides several download strategies, supports BitTorrent, offers cache management, and generates playlists for media player applications\.
+.
+.P
+As input, \fBpodcatcher\fR accepts feeds (RSS or Atom) and subscription lists (OPML or iTunes PCAST), in the form of filenames or URLs (HTTP or FTP)\. Alternatively, it accepts one feed or subscription list from the standard input\.
+.
+.P
+BitTorrent is supported both internally (through the RubyTorrent library) and externally (\.torrent files are downloaded, but the user handles them using a BitTorrent application)\. The latter is currently the most reliable method, as RubyTorrent is still in alpha phase\.
+.
+.P
+Concurrency is not handled: simultaneous executions of this program should target different directories\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB\-d\fR, \fB\-\-dir\fR \fIDIR\fR
+Directory for storing application state\. Default value is current directory\.
+.
+.TP
+\fB\-D\fR, \fB\-\-cachedir\fR \fIDIR\fR
+Directory for storing downloaded content\. Default value is the \'cache\' subdirectory of the state directory (specified by the \fB\-\-dir\fR option)\.
+.
+.IP
+This option is ignored if this directory is inside the state directory, or if the state directory is inside this directory\.
+.
+.TP
+\fB\-s\fR, \fB\-\-size\fR \fISIZE\fR
+Size, in megabytes, of the cache directory (specified by the \fB\-\-cachedir\fR option)\. 0 means unbounded\. Default value is 512\. This option also sets the upper limit for the amount of content that can be downloaded in one session\.
+.
+.IP
+Content downloaded during previous sessions may be deleted by podcatcher in order to make place for new content\.
+.
+.TP
+\fB\-e\fR, \fB\-\-[no\-]empty\fR
+Empty the cache directory before downloading content\.
+.
+.TP
+\fB\-p\fR, \fB\-\-[no\-]perfeed\fR
+Create one subdirectory per feed in the cache directory\.
+.
+.TP
+\fB\-S\fR, \fB\-\-strategy\fR \fIS\fR
+Strategy to use when downloading content:
+.
+.IP
+\fIback_catalog\fR: download any content that has not been downloaded before; prefer recent content to older content (may download more than one content file per feed)\.
+.
+.IP
+\fIone\fR: download one content file (not already downloaded) for each feed, with a preference for recent content\.
+.
+.IP
+\fIall\fR: download all content, with a preference for recent content; even already downloaded content is downloaded once again (may download more than one content file per feed)\.
+.
+.IP
+\fIchron\fR: download in chronological order any content that has not been downloaded before; this is useful for audiobook podcasts etc (may download more than one content file per feed)\.
+.
+.IP
+\fIchron_one\fR: download the oldest content of each feed that has not already been downloaded\.
+.
+.IP
+\fIchron_all\fR: download all content in chronological order, even if the content has already been downloaded (may download more than one content file per feed)\.
+.
+.IP
+\fInew\fR: download the most recent content of each feed, if it has not already been downloaded (DEPRECATED: use \fIone\fR instead of \fInew\fR)\.
+.
+.IP
+\fIcache\fR: generate a playlist for content already in cache\.
+.
+.IP
+Default value is \fIone\fR\.
+.
+.TP
+\fB\-C\fR, \fB\-\-content\fR \fIREGEXP\fR
+A regular expression that matches the MIME types of content to be downloaded\. Examples: \'^video/\', \'^audio/mpeg$\'\. Default value is \'\', which matches any type of content\.
+.
+.TP
+\fB\-l\fR, \fB\-\-language\fR \fILANG\fR
+A list of language tags separated by commas\. Examples: \fIen\-us,de\fR, \fIfr\fR\. A feed whose language does not match this list is ignored\. By default, all feeds are accepted\. See http://cyber\.law\.harvard\.edu/rss/languages\.html and http://cyber\.law\.harvard\.edu/rss/rss\.html#optionalChannelElements for allowed tags\.
+.
+.TP
+\fB\-H\fR, \fB\-\-horizon\fR \fIDATE\fR
+Do not download content older than the given date\. The date has the format yyyy\.mm\.dd (example: 2007\.03\.22) or yyyy\.mm (equivalent to yyyy\.mm\.01) or yyyy (equivalent to yyyy\.01\.01)\. By default, no horizon is specified\.
+.
+.TP
+\fB\-r\fR, \fB\-\-retries\fR \fIN\fR
+Try downloading files (content, feeds or subscription lists) at most N times before giving up\. Default value is 1\.
+.
+.TP
+\fB\-t\fR, \fB\-\-type\fR \fITYPE\fR
+Type of the playlist written to standard output\. Accepted values are \fIm3u\fR, \fIsmil\fR, \fIpls\fR, \fIasx\fR, \fItox\fR, \fIxspf\fR\. Default value is \fIm3u\fR\.
+.
+.TP
+\fB\-m\fR, \fB\-\-memsize\fR \fIN\fR
+Remember last N downloaded content, and do not download them again\. 0 means unbounded\. Default value is 1000\.
+.
+.TP
+\fB\-o\fR, \fB\-\-order\fR \fIORDER\fR
+The order in which feeds are traversed when downloading content:
+.
+.IP
+\fIrandom\fR: randomizes the feed order, so that every feed has an equal chance when content is downloaded, even if the cache size is small and the number of feeds is big\.
+.
+.IP
+\fIalphabetical\fR: orders feeds alphabetically by using their titles\.
+.
+.IP
+\fIsequential\fR: preserves the argument order (and the feed order in subscription lists)\.
+.
+.IP
+\fIreverse\fR: reverses the feed order\.
+.
+.IP
+Default value is \fIrandom\fR\.
+.
+.TP
+\fB\-F\fR, \fB\-\-function\fR \fIFUNCTION\fR
+Used function:
+.
+.IP
+\fIdownload\fR: downloads content from specified feeds\.
+.
+.IP
+\fIsearch\fR: generates an OPML subscription list of feeds matching the specified query; the only options relevant for search are \fB\-v\fR, \fB\-r\fR and \fB\-f\fR\.
+.
+.IP
+Default value is \fIdownload\fR\.
+.
+.TP
+\fB\-f\fR, \fB\-\-feeds\fR \fIN\fR
+Do not download more than N feeds (when using the download function), or return the first N relevant feeds (when using the search function)\. 0 means unbounded\. Default value is 1000\.
+.
+.TP
+\fB\-T\fR, \fB\-\-torrentdir\fR \fIDIR\fR
+Copy torrent files to directory DIR\. The handling of torrents through an external BitTorrent client is left to the user\. If this option is not used, torrents are handled internally (if RubyTorrent is installed), or else ignored\.
+.
+.TP
+\fB\-U\fR, \fB\-\-uploadrate\fR \fIN\fR
+Maximum upload rate (kilobytes per second) for the internal BitTorrent client\. Unbounded by default\.
+.
+.TP
+\fB\-i\fR, \fB\-\-itemsize\fR \fIN\fR
+If downloaded content is less than N MB in size (where N is an integer), fetch other content of that same feed until this size is reached\. Default value is 0\.
+.
+.IP
+The intent here is to ensure that podcatcher downloads about as much content from podcasts that frequently post small content (in terms of minutes) as it does from podcasts that post bigger content less frequently\. This option was more relevant in the early days of podcasting when content size varied greatly from one podcast to another\. You would rarely need to use this option today\.
+.
+.TP
+\fB\-c\fR, \fB\-\-[no\-]cache\fR
+Generate a playlist for content already in cache\. DEPRECATED, use \'\fB\-\-strategy\fR cache\'\.
+.
+.TP
+\fB\-a\fR, \fB\-\-[no\-]asif\fR
+Do not download content, only download feeds and subscription lists\. Useful for testing\.
+.
+.TP
+\fB\-v\fR, \fB\-\-[no\-]verbose\fR
+Run verbosely\.
+.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Display current version and exit\.
+.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display this message and exit\.
+.
+.TP
+\fB\-\-[no\-]restrictednames\fR
+In the cache directory, make the names of created subdirectories and files acceptable for restrictive file systems such as VFAT and FAT, which are used on Windows and MP3 player devices\. Enabled by default\.
+.
+.TP
+\fB\-A\fR, \fB\-\-arguments\fR \fIFILENAME_OR_URL\fR
+Read arguments from specified file\. This file accepts one argument per line, and ignores empty lines and lines starting with #\. This option may be used several times in one command\.
+.
+.TP
+\fB\-O\fR, \fB\-\-options\fR \fIFILENAME_OR_URL\fR
+Read options from specified file\. The options file uses the YAML format\.
+.
+.SH "EXAMPLES"
+.
+.nf
+
+$ podcatcher http://feeds\.feedburner\.com/Ruby5
+
+$ podcatcher \-O options\.yaml \-A feeds\.txt
+
+$ podcatcher \-\-dir ~/podcasts http://www\.npr\.org/podcasts\.opml
+
+$ podcatcher \-\-dir ~/podcasts \-\-strategy cache > cache\.m3u
+
+$ cat feeds\.opml | podcatcher \-\-dir ~/podcasts > latest\.m3u
+
+$ podcatcher \-vd ~/podcasts \-s 500 \-m 10_000 \-t tox feeds\.opml > latest\.tox
+
+$ podcatcher \-vF search news http://www\.bbc\.co\.uk/podcasts\.opml > bbc_news\.opml
+
+$ podcatcher \-F search \-f 12 news http://www\.npr\.org/podcasts\.opml > npr_news\.opml
+.
+.fi
+.
+.SH "SEE ALSO"
+podcatcher(5)
+.
+.SH "COPYRIGHT"
+Copyright 2016 Doga Armangil \fIdoga\.armangil@alumni\.epfl\.ch\fR
+.
+.P
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+.
+.P
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software\.
+.
+.P
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE\.
