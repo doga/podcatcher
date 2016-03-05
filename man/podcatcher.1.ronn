@@ -290,7 +290,7 @@ target different directories.
 
 ## SEE ALSO
 
-podcatcher(5)
+podcatcher-options-format(5), podcatcher-arguments-format(5)
 
 
 ## COPYRIGHT

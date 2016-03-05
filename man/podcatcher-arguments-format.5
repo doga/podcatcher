@@ -1,0 +1,42 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PODCATCHER\-ARGUMENTS\-FORMAT" "5" "March 2016" "" "Podcatcher Manual"
+.
+.SH "NAME"
+\fBpodcatcher\-arguments\-format\fR \- podcatcher arguments file format
+.
+.SH "DESCRIPTION"
+Files specified with the \fBpodcatcher \-\-arguments\fR option are text files that are formatted as follows:
+.
+.IP "\(bu" 4
+Each line should contain no more than one argument\.
+.
+.IP "\(bu" 4
+Empty lines are allowed\.
+.
+.IP "\(bu" 4
+Comment lines start with \fI#\fR\.
+.
+.IP "" 0
+.
+.SH "EXAMPLE"
+# This arguments file contains two arguments
+.
+.P
+# Ruby5
+.
+.br
+http://feeds\.feedburner\.com/Ruby5
+.
+.P
+# Software Engineering Radio
+.
+.br
+http://feeds\.feedburner\.com/se\-radio
+.
+.SH "SEE ALSO"
+podcatcher(1)
+.
+.SH "COPYRIGHT"
+Copyright 2016 Doga Armangil \fIdoga\.armangil@alumni\.epfl\.ch\fR

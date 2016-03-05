@@ -1,0 +1,34 @@
+
+podcatcher-arguments-format(5) -- podcatcher arguments file format
+==================================================================
+
+## DESCRIPTION
+
+Files specified with the `podcatcher --arguments` option are text files that are formatted as follows:
+
+* Each line contains no more than one argument.
+* Empty lines are allowed.
+* Comment lines start with _#_.
+
+
+## EXAMPLE
+
+  # This arguments file contains two arguments
+  
+  # Ruby5 <br>
+  http://feeds.feedburner.com/Ruby5
+
+  # Software Engineering Radio <br>
+  http://feeds.feedburner.com/se-radio
+
+
+## SEE ALSO
+
+podcatcher(1)
+
+
+## COPYRIGHT
+
+Copyright 2016 Doga Armangil <doga.armangil@alumni.epfl.ch>
+
+

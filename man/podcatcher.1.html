@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' value='text/html;charset=utf8'>
+  <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
+  <title>podcatcher(1) - podcast client for the command line</title>
+  <style type='text/css' media='all'>
+  /* style: man */
+  body#manpage {margin:0}
+  .mp {max-width:100ex;padding:0 9ex 1ex 4ex}
+  .mp p,.mp pre,.mp ul,.mp ol,.mp dl {margin:0 0 20px 0}
+  .mp h2 {margin:10px 0 0 0}
+  .mp > p,.mp > pre,.mp > ul,.mp > ol,.mp > dl {margin-left:8ex}
+  .mp h3 {margin:0 0 0 4ex}
+  .mp dt {margin:0;clear:left}
+  .mp dt.flush {float:left;width:8ex}
+  .mp dd {margin:0 0 0 9ex}
+  .mp h1,.mp h2,.mp h3,.mp h4 {clear:left}
+  .mp pre {margin-bottom:20px}
+  .mp pre+h2,.mp pre+h3 {margin-top:22px}
+  .mp h2+pre,.mp h3+pre {margin-top:5px}
+  .mp img {display:block;margin:auto}
+  .mp h1.man-title {display:none}
+  .mp,.mp code,.mp pre,.mp tt,.mp kbd,.mp samp,.mp h3,.mp h4 {font-family:monospace;font-size:14px;line-height:1.42857142857143}
+  .mp h2 {font-size:16px;line-height:1.25}
+  .mp h1 {font-size:20px;line-height:2}
+  .mp {text-align:justify;background:#fff}
+  .mp,.mp code,.mp pre,.mp pre code,.mp tt,.mp kbd,.mp samp {color:#131211}
+  .mp h1,.mp h2,.mp h3,.mp h4 {color:#030201}
+  .mp u {text-decoration:underline}
+  .mp code,.mp strong,.mp b {font-weight:bold;color:#131211}
+  .mp em,.mp var {font-style:italic;color:#232221;text-decoration:none}
+  .mp a,.mp a:link,.mp a:hover,.mp a code,.mp a pre,.mp a tt,.mp a kbd,.mp a samp {color:#0000ff}
+  .mp b.man-ref {font-weight:normal;color:#434241}
+  .mp pre {padding:0 4ex}
+  .mp pre code {font-weight:normal;color:#434241}
+  .mp h2+pre,h3+pre {padding-left:0}
+  ol.man-decor,ol.man-decor li {margin:3px 0 10px 0;padding:0;float:left;width:33%;list-style-type:none;text-transform:uppercase;color:#999;letter-spacing:1px}
+  ol.man-decor {width:100%}
+  ol.man-decor li.tl {text-align:left}
+  ol.man-decor li.tc {text-align:center;letter-spacing:4px}
+  ol.man-decor li.tr {text-align:right;float:right}
+  </style>
+  <style type='text/css' media='all'>
+  /* style: toc */
+  .man-navigation {display:block !important;position:fixed;top:0;left:113ex;height:100%;width:100%;padding:48px 0 0 0;border-left:1px solid #dbdbdb;background:#eee}
+  .man-navigation a,.man-navigation a:hover,.man-navigation a:link,.man-navigation a:visited {display:block;margin:0;padding:5px 2px 5px 30px;color:#999;text-decoration:none}
+  .man-navigation a:hover {color:#111;text-decoration:underline}
+  </style>
+</head>
+<!--
+  The following styles are deprecated and will be removed at some point:
+  div#man, div#man ol.man, div#man ol.head, div#man ol.man.
+
+  The .man-page, .man-decor, .man-head, .man-foot, .man-title, and
+  .man-navigation should be used instead.
+-->
+<body id='manpage'>
+  <div class='mp' id='man'>
+
+  <div class='man-navigation' style='display:none'>
+    <a href="#NAME">NAME</a>
+    <a href="#SYNOPSIS">SYNOPSIS</a>
+    <a href="#DESCRIPTION">DESCRIPTION</a>
+    <a href="#OPTIONS">OPTIONS</a>
+    <a href="#EXAMPLES">EXAMPLES</a>
+    <a href="#SEE-ALSO">SEE ALSO</a>
+    <a href="#COPYRIGHT">COPYRIGHT</a>
+  </div>
+
+  <ol class='man-decor man-head man head'>
+    <li class='tl'>podcatcher(1)</li>
+    <li class='tc'>Podcatcher Manual</li>
+    <li class='tr'>podcatcher(1)</li>
+  </ol>
+
+  <h2 id="NAME">NAME</h2>
+<p class="man-name">
+  <code>podcatcher</code> - <span class="man-whatis">podcast client for the command line</span>
+</p>
+
+<h2 id="SYNOPSIS">SYNOPSIS</h2>
+
+<p><code>podcatcher -h</code> <br />
+<code>podcatcher --help</code> <br />
+<code>podcatcher -V</code> <br />
+<code>podcatcher --version</code> <br />
+<code>podcatcher</code> [<code>-vepa</code>][<code>-d</code> <em>dir</em>][<code>-D</code> <var>cachedir</var>][<code>-s</code> <var>cachesize</var>][<code>-S</code> <var>strategy</var>][<code>-C</code> <var>mediatype</var>][<code>-L</code> <var>lang</var>][<code>-H</code> <var>since</var>][<code>-r</code> <var>retries</var>][<code>-t</code> <var>outputformat</var>][<code>-m</code> <var>memsize</var>][<code>-o</code> <var>feedorder</var>][<code>-F</code> <var>function</var>][<code>-f</code> <var>dllimit</var>][<code>-T</code> <var>torrentdir</var>][<code>-i</code> <var>itemsize</var>][<code>--restrictednames</code>][<code>-A</code> <var>sourcelistfile</var>][<code>-O</code> <var>optionsfile</var>] [<var>sourcefile</var>]...</p>
+
+<h2 id="DESCRIPTION">DESCRIPTION</h2>
+
+<p><code>podcatcher</code> can download any type of content that is enclosed in RSS or Atom files, such as audio, video and image content. A search function for
+subscribing to feeds is also included.</p>
+
+<p><code>podcatcher</code> provides several download
+strategies, supports BitTorrent, offers cache management, and generates
+playlists for media player applications.</p>
+
+<p>As input, <code>podcatcher</code> accepts feeds (RSS or Atom) and subscription lists
+(OPML or iTunes PCAST), in the form of filenames or URLs (HTTP or FTP).
+Alternatively, it accepts one feed or subscription list from the standard
+input.</p>
+
+<p>BitTorrent is supported both internally (through the RubyTorrent library)
+and externally (.torrent files are downloaded, but the user handles
+them using a BitTorrent application). The latter is currently the most
+reliable method, as RubyTorrent is still in alpha phase.</p>
+
+<p>Concurrency is not handled: simultaneous executions of this program should
+target different directories.</p>
+
+<h2 id="OPTIONS">OPTIONS</h2>
+
+<dl>
+<dt><code>-d</code>, <code>--dir</code> <var>DIR</var></dt><dd><p>Directory for storing application state.
+Default value is current directory.</p></dd>
+<dt><code>-D</code>, <code>--cachedir</code> <var>DIR</var></dt><dd><p>Directory for storing downloaded content.
+Default value is the 'cache' subdirectory
+of the state directory (specified by
+the <code>--dir</code> option).</p>
+
+<p>This option is ignored if this directory
+is inside the state directory, or if the
+state directory is inside this directory.</p></dd>
+<dt><code>-s</code>, <code>--size</code> <var>SIZE</var></dt><dd><p>Size, in megabytes, of the cache directory
+(specified by the <code>--cachedir</code> option).
+0 means unbounded. Default value is 512.
+This option also sets the upper limit for
+the amount of content that can be downloaded
+in one session.</p>
+
+<p>Content downloaded during previous sessions
+may be deleted by podcatcher in order to
+make place for new content.</p></dd>
+<dt><code>-e</code>, <code>--[no-]empty</code></dt><dd><p>Empty the cache directory before
+downloading content.</p></dd>
+<dt><code>-p</code>, <code>--[no-]perfeed</code></dt><dd><p>Create one subdirectory per feed
+in the cache directory.</p></dd>
+<dt><code>-S</code>, <code>--strategy</code> <var>S</var></dt><dd><p>Strategy to use when downloading content:</p>
+
+<p><var>back_catalog</var>: download any content that
+  has not been downloaded before; prefer
+  recent content to older content (may
+  download more than one content file per
+  feed).</p>
+
+<p><var>one</var>: download one content file (not
+  already downloaded) for each feed, with a
+  preference for recent content.</p>
+
+<p><var>all</var>: download all content, with a
+  preference for recent content; even
+  already downloaded content is downloaded
+  once again (may download more than one
+  content file per feed).</p>
+
+<p><var>chron</var>: download in chronological order
+  any content that has not been downloaded
+  before; this is useful for audiobook
+  podcasts etc (may download more than one
+  content file per feed).</p>
+
+<p><var>chron_one</var>: download the oldest content of
+  each feed that has not already been
+  downloaded.</p>
+
+<p><var>chron_all</var>: download all content in
+  chronological order, even if the content
+  has already been downloaded (may download
+  more than one content file per feed).</p>
+
+<p><var>new</var>: download the most recent content
+  of each feed, if it has not already been
+  downloaded (DEPRECATED: use <var>one</var> instead
+  of <var>new</var>).</p>
+
+<p><var>cache</var>: generate a playlist for content
+  already in cache.</p>
+
+<p>Default value is <var>one</var>.</p></dd>
+<dt><code>-C</code>, <code>--content</code> <var>REGEXP</var></dt><dd><p>A regular expression that matches the
+MIME types of content to be downloaded.
+Examples: '^video/', '^audio/mpeg$'.
+Default value is '', which matches any
+type of content.</p></dd>
+<dt><code>-l</code>, <code>--language</code> <var>LANG</var></dt><dd><p>A list of language tags separated by
+commas. Examples: <var>en-us,de</var>, <var>fr</var>.
+A feed whose language does not match
+this list is ignored. By default, all
+feeds are accepted. See
+http://cyber.law.harvard.edu/rss/languages.html
+and
+http://cyber.law.harvard.edu/rss/rss.html#optionalChannelElements
+for allowed tags.</p></dd>
+<dt><code>-H</code>, <code>--horizon</code> <var>DATE</var></dt><dd><p>Do not download content older than
+the given date. The date has the format
+yyyy.mm.dd (example: 2007.03.22) or
+yyyy.mm (equivalent to yyyy.mm.01) or
+yyyy (equivalent to yyyy.01.01).
+By default, no horizon is specified.</p></dd>
+<dt><code>-r</code>, <code>--retries</code> <var>N</var></dt><dd><p>Try downloading files (content, feeds
+or subscription lists) at most N times
+before giving up. Default value is 1.</p></dd>
+<dt><code>-t</code>, <code>--type</code> <var>TYPE</var></dt><dd><p>Type of the playlist written to
+standard output. Accepted values are
+<var>m3u</var>, <var>smil</var>, <var>pls</var>, <var>asx</var>, <var>tox</var>, <var>xspf</var>.
+Default value is <var>m3u</var>.</p></dd>
+<dt><code>-m</code>, <code>--memsize</code> <var>N</var></dt><dd><p>Remember last N downloaded content,
+and do not download them again.
+0 means unbounded. Default value is 1000.</p></dd>
+<dt><code>-o</code>, <code>--order</code> <var>ORDER</var></dt><dd><p>The order in which feeds are traversed
+when downloading content:</p>
+
+<p><var>random</var>: randomizes the feed order,
+so that every feed has an equal chance
+when content is downloaded, even if
+the cache size is small and the number
+of feeds is big.</p>
+
+<p><var>alphabetical</var>: orders feeds
+alphabetically by using their titles.</p>
+
+<p><var>sequential</var>: preserves the argument
+order (and the feed order in
+subscription lists).</p>
+
+<p><var>reverse</var>: reverses the feed order.</p>
+
+<p>Default value is <var>random</var>.</p></dd>
+<dt><code>-F</code>, <code>--function</code> <var>FUNCTION</var></dt><dd><p>Used function:</p>
+
+<p><var>download</var>: downloads content from
+specified feeds.</p>
+
+<p><var>search</var>: generates an OPML subscription
+list of feeds matching the specified
+query; the only options relevant for
+search are <code>-v</code>, <code>-r</code> and <code>-f</code>.</p>
+
+<p>Default value is <var>download</var>.</p></dd>
+<dt><code>-f</code>, <code>--feeds</code> <var>N</var></dt><dd><p>Do not download more than N feeds
+(when using the download function),
+or return the first N relevant feeds
+(when using the search function).
+0 means unbounded. Default value is 1000.</p></dd>
+<dt><code>-T</code>, <code>--torrentdir</code> <var>DIR</var></dt><dd><p>Copy torrent files to directory DIR.
+The handling of torrents through an
+external BitTorrent client is left to
+the user. If this option is not used,
+torrents are handled internally (if
+RubyTorrent is installed), or else
+ignored.</p></dd>
+<dt><code>-U</code>, <code>--uploadrate</code> <var>N</var></dt><dd><p>Maximum upload rate (kilobytes per second)
+for the internal BitTorrent client.
+Unbounded by default.</p></dd>
+<dt><code>-i</code>, <code>--itemsize</code> <var>N</var></dt><dd><p>If downloaded content is less than N MB in
+size (where N is an integer), fetch other
+content of that same feed until this size
+is reached.
+Default value is 0.</p>
+
+<p>The intent here is to ensure that podcatcher
+downloads about as much content from podcasts
+that frequently post small content (in
+terms of minutes) as it does from podcasts
+that post bigger content less frequently.
+This option was more relevant in the early
+days of podcasting when content size varied
+greatly from one podcast to another. You
+would rarely need to use this option today.</p></dd>
+<dt><code>-c</code>, <code>--[no-]cache</code></dt><dd><p>Generate a playlist for content
+already in cache.
+DEPRECATED, use '<code>--strategy</code> cache'.</p></dd>
+<dt><code>-a</code>, <code>--[no-]asif</code></dt><dd><p>Do not download content, only download
+feeds and subscription lists.
+Useful for testing.</p></dd>
+<dt><code>-v</code>, <code>--[no-]verbose</code></dt><dd><p>Run verbosely.</p></dd>
+<dt><code>-V</code>, <code>--version</code></dt><dd><p>Display current version and exit.</p></dd>
+<dt><code>-h</code>, <code>--help</code></dt><dd><p>Display this message and exit.</p></dd>
+<dt> <code>--[no-]restrictednames</code></dt><dd><p>In the cache directory, make the names of
+created subdirectories and files acceptable
+for restrictive file systems such as VFAT
+and FAT, which are used on Windows and MP3
+player devices.
+Enabled by default.</p></dd>
+<dt><code>-A</code>, <code>--arguments</code> <var>FILENAME_OR_URL</var></dt><dd><p>Read arguments from specified file.
+This file accepts one argument per line,
+and ignores empty lines and lines starting
+with #.
+This option may be used several times
+  in one command.</p></dd>
+<dt><code>-O</code>, <code>--options</code> <var>FILENAME_OR_URL</var></dt><dd><p>Read options from specified file.
+The options file uses the YAML format.</p></dd>
+</dl>
+
+
+<h2 id="EXAMPLES">EXAMPLES</h2>
+
+<pre><code>$ podcatcher http://feeds.feedburner.com/Ruby5
+
+$ podcatcher -O options.yaml -A feeds.txt
+
+$ podcatcher --dir ~/podcasts http://www.npr.org/podcasts.opml
+
+$ podcatcher --dir ~/podcasts --strategy cache &gt; cache.m3u
+
+$ cat feeds.opml | podcatcher --dir ~/podcasts &gt; latest.m3u
+
+$ podcatcher -vd ~/podcasts -s 500 -m 10_000 -t tox feeds.opml &gt; latest.tox
+
+$ podcatcher -vF search news http://www.bbc.co.uk/podcasts.opml &gt; bbc_news.opml
+
+$ podcatcher -F search -f 12 news http://www.npr.org/podcasts.opml &gt; npr_news.opml
+</code></pre>
+
+<h2 id="SEE-ALSO">SEE ALSO</h2>
+
+<p><a class="man-ref" href="podcatcher-options-format.5.html">podcatcher-options-format<span class="s">(5)</span></a>, <a class="man-ref" href="podcatcher-arguments-format.5.html">podcatcher-arguments-format<span class="s">(5)</span></a></p>
+
+<h2 id="COPYRIGHT">COPYRIGHT</h2>
+
+<p>Copyright 2016 Doga Armangil <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#100;&#111;&#x67;&#x61;&#46;&#97;&#114;&#x6d;&#x61;&#x6e;&#103;&#x69;&#108;&#x40;&#x61;&#x6c;&#117;&#109;&#x6e;&#105;&#46;&#101;&#x70;&#102;&#108;&#x2e;&#99;&#x68;" data-bare-link="true">&#x64;&#x6f;&#x67;&#x61;&#x2e;&#97;&#114;&#109;&#x61;&#110;&#x67;&#105;&#108;&#x40;&#x61;&#108;&#x75;&#x6d;&#x6e;&#x69;&#x2e;&#101;&#x70;&#x66;&#108;&#x2e;&#x63;&#x68;</a></p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+
+
+  <ol class='man-decor man-foot man foot'>
+    <li class='tl'></li>
+    <li class='tc'>March 2016</li>
+    <li class='tr'>podcatcher(1)</li>
+  </ol>
+
+  </div>
+</body>
+</html>

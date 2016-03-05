@@ -1,0 +1,274 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PODCATCHER\-OPTIONS\-FORMAT" "5" "March 2016" "" "Podcatcher Manual"
+.
+.SH "NAME"
+\fBpodcatcher\-options\-format\fR \- podcatcher options file format
+.
+.SH "DESCRIPTION"
+Files specified with \fBpodcatcher \-\-options\fR are YAML files that are formatted as follows:
+.
+.IP "\(bu" 4
+An option is specified as a key\-value pair\.
+.
+.IP "\(bu" 4
+Option keys are long versions of \fBpodcatcher\fR option switches\. For example, the \fB\-\-strategy\fR option switch translates as the \fBstrategy\fR key\.
+.
+.IP "\(bu" 4
+The \fBoptions\fR option key is ignored if present\.
+.
+.IP "" 0
+.
+.SH "EXAMPLE"
+# podcatcher options file
+.
+.br
+.
+.P
+# Directory for storing application state
+.
+.br
+dir: "\."
+.
+.P
+# Directory for storing downloaded content
+.
+.br
+# (do not use special shell characters such as ~ in filenames,
+.
+.br
+# podcatcher does not know how to handle them)
+.
+.br
+#cachedir: "/media/disk/podcasts"
+.
+.br
+.
+.P
+# Size of content cache in megabytes
+.
+.br
+size: 512
+.
+.P
+# Download strategy
+.
+.br
+strategy: chron_one
+.
+.P
+# Regular expression that matches the types of content to be downloaded
+.
+.br
+#content: "^audio/mpeg$|^audio/x\-mpeg$"
+.
+.br
+#content: "^audio/"
+.
+.br
+#content: "^video/"
+.
+.br
+#content: "^audio/|^video/"
+.
+.br
+#content: "^image/"
+.
+.br
+content: ""
+.
+.P
+# Ignore feeds that do not match these languages
+.
+.br
+#language: "de"
+.
+.br
+#language: "en,fr\-ca"
+.
+.br
+language: ""
+.
+.P
+# Playlist type
+.
+.br
+#type: smil
+.
+.br
+#type: pls
+.
+.br
+#type: asx
+.
+.br
+#type: tox
+.
+.br
+#type: xspf
+.
+.br
+type: m3u
+.
+.P
+# Create one subfolder per feed in content cache?
+.
+.br
+#perfeed: true
+.
+.br
+perfeed: false
+.
+.P
+# Do not download content (useful for testing)?
+.
+.br
+#asif: true
+.
+.br
+asif: false
+.
+.P
+# Run verbosely?
+.
+.br
+#verbose: false
+.
+.br
+verbose: true
+.
+.P
+# Read arguments from specified files (the files contain one argument per line)
+.
+.br
+#arguments: "/home/user/podcatcher_arguments\.txt"
+.
+.br
+#arguments: "http://www\.config\.com/podcatcher_arguments\.txt"
+.
+.br
+.
+.P
+# Maximum number of download attempts for a given file
+.
+.br
+retries: 4
+.
+.P
+# The order in which feeds are traversed when downloading content
+.
+.br
+#order: sequential
+.
+.br
+#order: alphabetical
+.
+.br
+#order: reverse
+.
+.br
+order: random
+.
+.P
+# Used function
+.
+.br
+#function: search
+.
+.br
+function: download
+.
+.P
+# Ignore content that is older than the horizon date
+.
+.br
+#horizon: "2007\.03\.22"
+.
+.br
+#horizon: "2007\.03"
+.
+.br
+#horizon: "2007"
+.
+.br
+.
+.P
+# The number of content downloads to be remembered, in order to avoid
+.
+.br
+# downloading them again
+.
+.br
+memsize: 2000
+.
+.P
+# Directory for storing torrent files, when using an external BitTorrent client
+.
+.br
+#torrentdir: "/home/user/torrents"
+.
+.br
+.
+.P
+# Maximum number of feeds to be handled in one session
+.
+.br
+feeds: 1000
+.
+.P
+# Maximum upload rate (in kilobytes per second) for the internal BitTorrent
+.
+.br
+# client (comment out following line if upload rate is not bounded)
+.
+.br
+uploadrate: 10
+.
+.P
+# In the content directory, create subdirectories and files using names that are
+.
+.br
+# acceptable for restrictive filesystems such as VFAT
+.
+.br
+#restrictednames: false
+.
+.br
+restrictednames: true
+.
+.P
+# Check if a newer version is available?
+.
+.br
+#checkforupdate: false
+.
+.br
+checkforupdate: true
+.
+.P
+# The minimum desired content size in megabytes; if downloaded content is
+.
+.br
+# less than this size, other content is downloaded using the same feed until
+.
+.br
+# this size is reached
+.
+.br
+itemsize: 0
+.
+.P
+# Delete all previously downloaded content?
+.
+.br
+#empty: true
+.
+.br
+empty: false
+.
+.SH "SEE ALSO"
+podcatcher(1)
+.
+.SH "COPYRIGHT"
+Copyright 2016 Doga Armangil \fIdoga\.armangil@alumni\.epfl\.ch\fR
