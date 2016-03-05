@@ -1,3 +1,5 @@
+# TODO?: sh "git tag v#{PARAMS[:gemspec].version}" 
+
 # Task parameters ##################################
 PARAMS = {
   gemspec:   nil
@@ -113,8 +115,6 @@ namespace :gem do
 
   desc "install the #{PARAMS[:gemspec].name} gem on the local machine"
   task :install do
-    $stderr.puts "gem name: #{PARAMS[:gemspec].name}" 
-    next
     sh "gem install #{PARAMS[:gemspec].name}"
     sh "gem cleanup #{PARAMS[:gemspec].name}"
     sh "rubygems_my_setup"
