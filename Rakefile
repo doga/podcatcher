@@ -24,7 +24,7 @@ begin
     return unless gemspec
     gemspec = Pathname.new(gemspec).read()
     self.instance_eval gemspec
-    $stderr.puts "#{PARAMS.inspect}" 
+    #$stderr.puts "#{PARAMS.inspect}" 
   end
   read_gem_name_from_gemspec
 end
@@ -43,38 +43,29 @@ task all: [
   'gem:all'
 ]
 
-desc "install #{PARAMS[:gemspec].gem_name} gem on local machine"
-task :install do
-  $stderr.puts "gem name: #{PARAMS[:gemspec].gem_name}" 
-  next
-  sh "gem install #{PARAMS[:gemspec].gem_name}"
-  sh "gem cleanup #{PARAMS[:gemspec].gem_name}"
-  sh "rubygems_my_setup"
-end
-
 namespace :man do
 
   desc 'build man pages'
   task :build do
     cd 'man'
-    sh "ronn --manual '#{PARAMS[:gemspec].gem_name} manual' -s toc --roff --html *.ronn"
+    sh "ronn --manual '#{PARAMS[:gemspec].name} manual' -s toc --roff --html *.ronn"
     cd '..'
   end
 
   namespace :git do
 
-    desc 'add man pages to git'
+    desc 'add the man pages to git'
     task :add do
       sh "git add man"
     end
 
-    desc 'add and commit man pages to git'
+    desc 'add and commit the man pages to git'
     task all: [:add]
 
   end
 
 
-  desc 'build man pages, then add and commit them to git'
+  desc 'build the man pages, then add and commit them to git'
   task all: [:build, 'git:all']
 
 end
@@ -107,18 +98,27 @@ end
 
 namespace :gem do
 
-  desc 'build the gem'
+  desc "build the #{PARAMS[:gemspec].name} gem"
   task build: Dir['*.gemspec'] do |t|
     sh "gem build #{t.prerequisites.first}"
   end
 
-  desc 'publish the gem'
+  desc "publish the #{PARAMS[:gemspec].name} gem"
   task push: [:build] do
     sh 'gem push *.gem'
   end
 
-  desc 'build and publish the ruby gem'
+  desc "build and publish the #{PARAMS[:gemspec].name} gem"
   task all: [:build, :push]
+
+  desc "install the #{PARAMS[:gemspec].name} gem on the local machine"
+  task :install do
+    $stderr.puts "gem name: #{PARAMS[:gemspec].name}" 
+    next
+    sh "gem install #{PARAMS[:gemspec].name}"
+    sh "gem cleanup #{PARAMS[:gemspec].name}"
+    sh "rubygems_my_setup"
+  end
 
 end
 
