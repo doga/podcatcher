@@ -86,7 +86,7 @@ opt.memsize = 1_000
 opt.empty = false
 opt.simulate = false
 opt.verbose = false
-opt.STRATEGIES = [:one, :new, :back_catalog, :all, :chron, :chron_one, :chron_all, :cache]
+opt.STRATEGIES = [:one, :new, :back_catalog, :conveyor, :all, :chron, :chron_one, :chron_all, :cache]
 opt.strategy = opt.STRATEGIES[0]
 opt.retries = 1
 opt.torrent_dir = nil
@@ -94,6 +94,7 @@ opt.rubytorrent = false
 opt.upload_rate = nil #10
 opt.itemsize = 0
 opt.feeds = 1_000
+opt.files = 1_000
 opt.FUNCTIONS = [:download, :search]
 opt.function = opt.FUNCTIONS[0]
 opt.per_feed = false
@@ -226,6 +227,13 @@ option_parser = OptionParser.new() do |c|
 		" recent content to older content (may ",
 		" download more than one content file per",
 		" feed),",
+		"* conveyor: like back_catalog, but",
+		" downloads up to -n number of files in the",
+		" cache per each feed.",
+		" Selecting conveyor strategy forces -p",
+		" mode on. Files are never deleted from the",
+		" cache; conveyor strategy simply stops if",
+		" the maximum cache size is reached.",
 		"* one: download one content file (not ",
 		" already downloaded) for each feed, with a ",
 		" preference for recent content,",
@@ -358,7 +366,15 @@ option_parser = OptionParser.new() do |c|
 		opt.feeds = e.to_i
 		opt.feeds = nil if opt.feeds<1
 	end
-	c.on("-T", "--torrentdir DIR", 
+	c.on("-n", "--files N",
+		"Do not download more than N content ",
+		"files per feed. This parameter works only",
+		"with conveyor strategy. 0 means unbounded.",
+		"Default value is #{opt.files}.\n") do |e|
+		opt.files = e.to_i
+		opt.files = nil if opt.files<1
+	end
+	c.on("-T", "--torrentdir DIR",
 		"Copy torrent files to directory DIR.",
 		"The handling of torrents through an",
 		"external BitTorrent client is left to",
@@ -601,6 +617,11 @@ option_parser = OptionParser.new() do |c|
 					if value.instance_of?(Fixnum)
 						opt.feeds = value
 						opt.feeds = nil if opt.feeds<1
+					end
+				when 'files'
+					if value.instance_of?(Fixnum)
+						opt.files = value
+						opt.files = nil if opt.files<1
 					end
 				when 'horizon'
 					begin
@@ -1672,7 +1693,40 @@ class Cache
 				feed.compact!
 			end
 		end
-		if @opt.strategy == :new or @opt.strategy == :one 
+		if @opt.strategy == :conveyor
+			@opt.per_feed = true
+			feeds.each() do |feed|
+			    existing_files = 0
+				if feed.size > 0 && @opt.files && @opt.files > 0
+					feeddir = restrictName(feed[0].feed_title)
+					@cache.each() do |e|
+						dir = File.split(File.split(e.file)[0])[1]
+						if dir == feeddir
+							existing_files += 1
+						end
+					end
+					files_needed = @opt.files - existing_files
+					if files_needed < 0
+						feed.clear
+					else
+						if @opt.itemsize && @opt.itemsize > 0
+							itemsize = 0
+							for i in 0...feed.size
+								itemsize += feed[i].size
+								if i+1 > files_needed
+									files_needed = i+1
+								end
+								if itemsize >= @opt.itemsize
+									break
+								end
+							end
+						end
+						feed.slice! files_needed...feed.size
+					end
+				end
+			end
+		end
+		if @opt.strategy == :new or @opt.strategy == :one
 			feeds.each() do |feed|
 				itemsize = 0
 				index = nil
@@ -1808,6 +1862,11 @@ class Cache
 				unless content
 					itemsize = 0
 					next
+				end
+				#special handling for cache full for conveyor strategy
+				if @opt.strategy == :conveyor and @opt.size and content.size+inc+total > @opt.size
+				    $stderr.puts "Cache has reached maximum size." if @opt.verbose
+					break
 				end
 				#make place in cache
 				while @opt.size and content.size+inc+total > @opt.size
@@ -2034,12 +2093,18 @@ private
 			res = nil
 		end
 		res
-	end 
+	end
+	def restrictName(dir)
+		if @opt.restricted_names
+			return dir.sub(/[\\\/:*?\"<>|!]/, ' ').gsub(/-+/,'-').gsub(/\s+/,' ').strip
+		else
+			return dir
+		end
+	end
 	def filename(content, dir) #produce filename for content to be downloaded
 		begin #per-feed subfolder
 			if @opt.per_feed and content.feed_title and content.feed_title.size > 0
-				newdir = dir+content.feed_title
-				newdir = dir+content.feed_title.gsub(/[\\\/:*?\"<>|!]/, ' ').gsub(/-+/,'-').gsub(/\s+/,' ').strip if @opt.restricted_names
+				newdir = dir+restrictName(content.feed_title)
 				if newdir.exist?
 					if newdir.directory?
 						dir = newdir
