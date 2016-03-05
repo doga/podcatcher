@@ -1,5 +1,3 @@
-# TODO?: sh "git tag v#{PARAMS[:gemspec].version}" 
-
 # Task parameters ##################################
 PARAMS = {
   gemspec:   nil
@@ -87,13 +85,18 @@ namespace :git do
     sh "git commit -am '#{message}'"
   end
 
+  desc 'add version tag'
+  task :tag do
+    sh "git tag v#{PARAMS[:gemspec].version}"
+  end
+
   desc 'publish the git repository'
   task :push do
     sh 'git push -u origin master'
   end
 
   desc 'publish the git repository'
-  task all: [:commit, :push]
+  task all: [:commit, :tag, :push]
 
 end
 
