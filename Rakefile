@@ -1,4 +1,5 @@
 MAN_TITLE = 'Podcatcher Manual'
+GEM_NAME = 'podcatcher'
 
 task default: :all
 
@@ -10,6 +11,13 @@ task all: [
   'git:all', 
   'gem:all'
 ]
+
+desc "install #{GEM_NAME} gem on local machine"
+task :install do
+  sh "gem install #{GEM_NAME}"
+  sh "gem cleanup #{GEM_NAME}"
+  sh "rubygems_my_setup"
+end
 
 namespace :man do
 
