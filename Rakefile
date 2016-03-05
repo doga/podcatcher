@@ -1,9 +1,40 @@
-MAN_TITLE = 'Podcatcher Manual'
-GEM_NAME = 'podcatcher'
+# Task parameters ##################################
+PARAMS = {
+  gemspec:   nil
+}
+
+# Capture gem specification by 'eval'ing the *.gemspec file
+# using a fake Gem::Specification class
+begin
+  require 'ostruct'
+  require 'pathname'
+  module Gem
+    class Specification
+      def initialize 
+        @spec = OpenStruct.new
+        @spec.executables = []
+        yield @spec
+        #$stderr.puts "#{@spec.inspect}" 
+        ::PARAMS[:gemspec] = @spec
+      end
+    end
+  end
+  def read_gem_name_from_gemspec
+    gemspec = Dir['*.gemspec'].first
+    return unless gemspec
+    gemspec = Pathname.new(gemspec).read()
+    self.instance_eval gemspec
+    $stderr.puts "#{PARAMS.inspect}" 
+  end
+  read_gem_name_from_gemspec
+end
+
+
+# Tasks #######################################
 
 task default: :all
 
-# If a file is not tracked, then do 'git add ...' beforehand !!!
+# If a file is not tracked, then do 'git add ...' beforehand if needed !!!
 desc 'publish to rubyforge.org and git origin (do "git add untracked_file" beforehand if needed !!!)'
 task all: [
   :clean, 
@@ -12,10 +43,12 @@ task all: [
   'gem:all'
 ]
 
-desc "install #{GEM_NAME} gem on local machine"
+desc "install #{PARAMS[:gemspec].gem_name} gem on local machine"
 task :install do
-  sh "gem install #{GEM_NAME}"
-  sh "gem cleanup #{GEM_NAME}"
+  $stderr.puts "gem name: #{PARAMS[:gemspec].gem_name}" 
+  next
+  sh "gem install #{PARAMS[:gemspec].gem_name}"
+  sh "gem cleanup #{PARAMS[:gemspec].gem_name}"
   sh "rubygems_my_setup"
 end
 
@@ -24,7 +57,7 @@ namespace :man do
   desc 'build man pages'
   task :build do
     cd 'man'
-    sh "ronn --manual '#{MAN_TITLE}' -s toc --roff --html *.ronn"
+    sh "ronn --manual '#{PARAMS[:gemspec].gem_name} manual' -s toc --roff --html *.ronn"
     cd '..'
   end
 
@@ -91,7 +124,7 @@ end
 
 # cleanup #################
 
-# define task :clean
+# define task named :clean
 require 'rake/clean'
 
 CLEAN.include '*.gem'
