@@ -1,0 +1,101 @@
+
+# Tasks #######################################
+
+task default: :all
+
+desc 'generate man pages and add them to git'
+task all: [
+  :copy,
+  'man:all'
+]
+
+task :copy do
+  Dir['**/*'].each do |filename|
+    # Skip man dir and Rakefile
+    next if filename.pathmap('%f') == 'Rakefile'
+    next if filename.pathmap('%d') == 'man'
+
+    file = Pathname.new filename
+    next unless file.file?
+
+    #$stderr.puts ">>>>>>>>>>>>>>mkdirp #{filename.pathmap "#{PARAMS[:next_step_dir]}/%d"}" 
+    mkdir_p filename.pathmap "#{PARAMS[:next_step_dir]}/%d"
+
+    #$stderr.puts ">>>>>>>>>>>>>>cp to outfile: #{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}" 
+    cp filename, "#{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}"
+  end
+end
+
+namespace :man do
+
+  desc 'generate man pages'
+  task :build do
+    Dir['man/*.ronn'].each do |ronn|
+      # generate man page
+      #$stderr.puts "building man page from #{ronn}" 
+
+      outdir = "#{PARAMS[:next_step_dir]}/#{ronn.pathmap '%d'}"
+      mkdir_p outdir
+      #mkdirp manfile.pathmap "#{PARAMS[:next_step_dir]}/%d"
+
+      outfile = "#{outdir}/#{ronn.pathmap '%n'}"
+      #manfile = manfile.pathmap "#{PARAMS[:next_step_dir]}/%p"
+      sh "ronn --roff --manual '#{PARAMS[:gemspec].name} manual' -s toc --pipe '#{ronn}' > '#{outfile}'"
+    end
+  end
+
+  namespace :git do
+
+    desc 'add the man pages to git'
+    task :add do
+      sh "git add man"
+    end
+
+    desc 'add and commit the man pages to git'
+    task all: [:add]
+
+  end
+
+
+  desc 'generate the man pages, then add and commit them to git'
+  task all: [:build] # [:build, 'git:all']
+
+end
+
+
+
+
+# Task parameters ##################################
+PARAMS = {
+  next_step_dir: Dir['../3.*'].first,
+  gemspec:   nil
+}
+
+# Capture gem specification by 'eval'ing the *.gemspec file
+# using a fake Gem::Specification class
+begin
+  require 'ostruct'
+  require 'pathname'
+  module Gem
+    class Specification
+      def initialize 
+        @spec = OpenStruct.new
+        @spec.executables = []
+        @spec.metadata = {}
+        yield @spec
+        #$stderr.puts "#{@spec.inspect}" 
+        ::PARAMS[:gemspec] = @spec
+      end
+    end
+  end
+  def read_gemspec
+    gemspec = Dir['../*/*.gemspec'].first
+    return unless gemspec
+    gemspec = Pathname.new(gemspec)
+    return unless gemspec.file?
+    gemspec = gemspec.read
+    self.instance_eval gemspec
+    #$stderr.puts "#{PARAMS.inspect}" 
+  end
+  read_gemspec
+end

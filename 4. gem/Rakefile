@@ -1,0 +1,58 @@
+task :default do
+  puts Dir.pwd
+end
+
+
+namespace :gem do
+
+  desc "install the gem on the local machine"
+  task :install do
+    sh "gem install #{PARAMS[:gemspec].name}"
+    sh "gem cleanup #{PARAMS[:gemspec].name}"
+    sh "rubygems_my_setup"
+  end
+
+  desc "publish the gem"
+  task push: [:build] do
+    sh 'gem push *.gem'
+  end
+
+  desc "publish the gem"
+  task all: [:push]
+
+end
+
+
+# Task parameters ##################################
+PARAMS = {
+  gemspec:   nil
+}
+
+# Capture gem specification by 'eval'ing the *.gemspec file
+# using a fake Gem::Specification class
+begin
+  require 'ostruct'
+  require 'pathname'
+  module Gem
+    class Specification
+      def initialize 
+        @spec = OpenStruct.new
+        @spec.executables = []
+        @spec.metadata = {}
+        yield @spec
+        #$stderr.puts "#{@spec.inspect}" 
+        ::PARAMS[:gemspec] = @spec
+      end
+    end
+  end
+  def read_gemspec
+    gemspec = Dir['../*/*.gemspec'].first
+    return unless gemspec
+    gemspec = Pathname.new(gemspec)
+    return unless gemspec.file?
+    gemspec = gemspec.read
+    self.instance_eval gemspec
+    #$stderr.puts "#{PARAMS.inspect}" 
+  end
+  read_gemspec
+end

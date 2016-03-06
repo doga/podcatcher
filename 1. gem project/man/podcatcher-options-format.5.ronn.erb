@@ -1,25 +1,25 @@
 
-podcatcher-options-format(5) -- podcatcher options file format
+<%= name %>-options-format(5) -- <%= name %> options file format
 ==============================================================
 
 ## DESCRIPTION
 
-Files specified with `podcatcher --options` are YAML files that are formatted as follows:
+Files specified with `<%= name %> --options` are YAML files that are formatted as follows:
 
 * An option is specified as a key-value pair.
-* Option keys are long versions of `podcatcher` option switches. For example, the `--strategy` option switch translates as the `strategy` key.
+* Option keys are long versions of `<%= name %>` option switches. For example, the `--strategy` option switch translates as the `strategy` key.
 * The `options` option key is ignored if present.
 
 ## EXAMPLE
 
-  # podcatcher options file <br>
+  # <%= name %> options file <br>
 
   # Directory for storing application state <br>
   dir: "."
 
   # Directory for storing downloaded content <br>
   # (do not use special shell characters such as ~ in filenames, <br>
-  # podcatcher does not know how to handle them) <br>
+  # <%= name %> does not know how to handle them) <br>
   #cachedir: "/media/disk/podcasts" <br>
 
   # Size of content cache in megabytes <br>
@@ -62,8 +62,8 @@ Files specified with `podcatcher --options` are YAML files that are formatted as
   verbose: true 
 
   # Read arguments from specified files (the files contain one argument per line) <br>
-  #arguments: "/home/user/podcatcher_arguments.txt" <br>
-  #arguments: "http://www.config.com/podcatcher_arguments.txt" <br>
+  #arguments: "/home/user/<%= name %>_arguments.txt" <br>
+  #arguments: "http://www.config.com/<%= name %>_arguments.txt" <br>
 
   # Maximum number of download attempts for a given file <br>
   retries: 4
@@ -118,7 +118,7 @@ Files specified with `podcatcher --options` are YAML files that are formatted as
 
 ## SEE ALSO
 
-podcatcher(1)
+<%= name %>(1)
 
 
 ## COPYRIGHT

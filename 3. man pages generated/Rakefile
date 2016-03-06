@@ -1,0 +1,88 @@
+task default: [
+  'git:all',
+  'gem:all'
+]
+
+
+namespace :gem do
+
+  desc 'build the gem'
+  task :build do
+    sh "gem build *.gemspec"
+    gemfile = Dir['*.gem'].first
+    mv gemfile, PARAMS[:next_step_dir]
+  end
+
+  desc 'build the gem'
+  task all: [:build]
+
+end
+
+
+namespace :git do
+
+  desc 'commit all tracked files'
+  task :commit do
+    message = nil
+    loop do
+      print 'Commit message for tracked files: '
+      message = gets.strip
+      break unless message.index("'")
+      puts "Please enter a message without single quotes (')."
+    end
+    sh "git commit -am '#{message}'"
+  end
+
+  desc 'add version tag'
+  task :tag do
+    sh "git tag v#{PARAMS[:gemspec].version}"
+  end
+
+  desc 'publish the git repository'
+  task :push do
+    sh 'git push -u origin master'
+  end
+
+  desc 'publish the git repository'
+  task all: [
+    :commit,
+    :tag
+  ] #[:commit, :tag, :push]
+
+end
+
+
+# Task parameters ##################################
+PARAMS = {
+  next_step_dir: Dir['../4.*'].first,
+  gemspec:   nil
+}
+
+# Capture gem specification by 'eval'ing the *.gemspec file
+# using a fake Gem::Specification class
+begin
+  require 'ostruct'
+  require 'pathname'
+  module Gem
+    class Specification
+      def initialize 
+        @spec = OpenStruct.new
+        @spec.executables = []
+        @spec.metadata = {}
+        yield @spec
+        #$stderr.puts "#{@spec.inspect}" 
+        ::PARAMS[:gemspec] = @spec
+      end
+    end
+  end
+  def read_gemspec
+    gemspec = Dir['../*/*.gemspec'].first
+    return unless gemspec
+    gemspec = Pathname.new(gemspec)
+    return unless gemspec.file?
+    gemspec = gemspec.read
+    self.instance_eval gemspec
+    #$stderr.puts "#{PARAMS.inspect}" 
+  end
+  read_gemspec
+end

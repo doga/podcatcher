@@ -1,8 +1,9 @@
 # Gem description, including dependencies
 # (see http://guides.rubygems.org/specification-reference/)
-
 Gem::Specification.new do |s|
   # Metadata #############################################################
+  # BEWARE: this authoritative data is used for resolving ERB markup in project files!
+
   s.name        = 'podcatcher'
   s.version     = '3.2.5'
   s.authors     = ['Doga Armangil']
@@ -13,21 +14,10 @@ Gem::Specification.new do |s|
   # SPDX IDs of chosen licenses (see http://spdx.org/licenses/)
   s.licenses    = Dir['*-LICENSE*'].map{|filename| filename.split('-').first}
 
-  #if s.respond_to? :metadata=
-  s.metadata = {
-    # List of RubyGems.org metadata that can be set manually on the gem webpage.
-    # - Source Code URL
-    'code' => 'https://github.com/doga/podcatcher',
-    # - Documentation URL
-    'docs' => 'https://github.com/doga/podcatcher',
-    # - Wiki URL
-    'wiki' => '',
-    # - Mailing List URL
-    'mail' => '',
-    # - Bug Tracker URL
-    'bugs' => 'https://github.com/doga/podcatcher/issues'
-  }
-  #end
+  if s.respond_to? :metadata=
+    s.metadata = {
+    }
+  end
 
   s.has_rdoc = false # 
   s.extra_rdoc_files = []
@@ -43,14 +33,17 @@ Gem::Specification.new do |s|
     'man/*.[15]',
     'certs/*.pem'
   ]
-  bindir = 'bin'
-  s.bindir = bindir # 'bin' is the default binary directory
-  Dir.entries(bindir).reject{|dir| ['.', '..'].include? dir}.each do |binary|
-    next if [
-      # ignored binaries
-      'test'
-    ].include? binary
-    s.executables << binary
+
+  # executables directory
+  s.bindir = 'bin' # 'bin' is the default executables directory
+  if Dir['bin'].first
+    Dir.entries('bin').reject{|dir| ['.', '..'].include? dir}.each do |executable|
+      next if [
+        # ignored binaries
+        'test'
+      ].include? executable
+      s.executables << executable
+    end
   end
 
   # s.platform = Gem::Platform::RUBY # Gem::Platform::RUBY is the default, indicates a pure-Ruby gem.
