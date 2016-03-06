@@ -2,7 +2,7 @@
 ARMANGIL'S PODCATCHER
 =====================
 
-Armangil's <%= name %> is a podcast client for the command line.
+Armangil's podcatcher is a podcast client for the command line.
 It can download any type of content enclosed in RSS or Atom files, such as 
 MP3 or other audio content, video and images. A search function for 
 subscribing to feeds is also included. It provides several download 
@@ -22,30 +22,30 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-Visit https://github.com/doga/<%= name %> for more information.
+Visit https://github.com/doga/podcatcher for more information.
 
 
 Installation
 ------------
 $ # Optional security step (do this once)
-$ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/<%= name %>/master/certs/doga.pem)
+$ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/podcatcher/master/certs/doga.pem)
 $
 $ # Install
 $ # (Optional security paramater: --trust-policy HighSecurity)
-$ gem install <%= name %> --trust-policy HighSecurity
+$ gem install podcatcher --trust-policy HighSecurity
 $
 $ # Check the used version
-$ <%= name %> --version
-<%= version %>
+$ podcatcher --version
+3.2.10
 $
-$ # Optionally enable <%= name %> MAN pages on Unix-like systems
+$ # Optionally enable podcatcher MAN pages on Unix-like systems
 $ gem install gem-man # do this once
-$ gem man <%= name %> # shows <%= name %> MAN page
+$ gem man podcatcher # shows podcatcher MAN page
 
 
 Usage
 -----
-<%= name %> [options] [arguments] 
+podcatcher [options] [arguments] 
 
 Options:
     -d, --dir DIR                    Directory for storing application state.
@@ -64,7 +64,7 @@ Options:
                                      the amount of content that can be downloaded
                                      in one session.
                                      Content downloaded during previous sessions
-                                     may be deleted by <%= name %> in order to
+                                     may be deleted by podcatcher in order to
                                      make place for new content.
     -e, --[no-]empty                 Empty the cache directory before
                                      downloading content.
@@ -175,7 +175,7 @@ Options:
                                      content of that same feed until this size
                                      is reached. 
                                      Default value is 0.
-                                     The intent here is to ensure that <%= name %>
+                                     The intent here is to ensure that podcatcher
                                      downloads about as much content from podcasts
                                      that frequently post small content (in
                                      terms of minutes) as it does from podcasts
@@ -211,30 +211,30 @@ Options:
 
 Usage examples:
 
-    <%= name %> http://feeds.feedburner.com/Ruby5
+    podcatcher http://feeds.feedburner.com/Ruby5
 
-    <%= name %> -O options.yaml -A feeds.txt
+    podcatcher -O options.yaml -A feeds.txt
 
-    <%= name %> --dir ~/podcasts http://www.npr.org/podcasts.opml
+    podcatcher --dir ~/podcasts http://www.npr.org/podcasts.opml
 
-    <%= name %> --dir ~/podcasts --strategy cache > cache.m3u
+    podcatcher --dir ~/podcasts --strategy cache > cache.m3u
 
-    cat feeds.opml | <%= name %> --dir ~/podcasts > latest.m3u
+    cat feeds.opml | podcatcher --dir ~/podcasts > latest.m3u
 
-    <%= name %> -vd ~/podcasts -s 500 -m 10_000 -t tox feeds.opml > latest.tox
+    podcatcher -vd ~/podcasts -s 500 -m 10_000 -t tox feeds.opml > latest.tox
 
-    <%= name %> -vF search news http://www.bbc.co.uk/podcasts.opml > bbc_news.opml
+    podcatcher -vF search news http://www.bbc.co.uk/podcasts.opml > bbc_news.opml
 
-    <%= name %> -F search -f 12 news http://www.npr.org/podcasts.opml > npr_news.opml
+    podcatcher -F search -f 12 news http://www.npr.org/podcasts.opml > npr_news.opml
 
 
 Support
 -------
-Please use https://github.com/doga/<%= name %> for bug reports
+Please use https://github.com/doga/podcatcher for bug reports
 and feature requests. 
 
 
 License
 -------
-Armangil's <%= name %> is released under the MIT Licence. 
+Armangil's podcatcher is released under the MIT Licence. 
 

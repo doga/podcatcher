@@ -46,7 +46,7 @@ task :make_binaries_executable do
 end
 
 task :copy_readme_file_to_root do
-  Dir['README*'].each do |filename|
+  Dir["#{PARAMS[:next_step_dir]}/README*"].each do |filename|
 
     # Copy
     cp filename, '..'
