@@ -70,9 +70,17 @@ begin
   module Gem
     class Specification
       def initialize 
+        # Fake Gem::Specification class
         @spec = OpenStruct.new
         @spec.executables = []
         @spec.metadata = {}
+        @spec.development_dependencies = []
+        @spec.singleton_class.class_eval do
+          def add_development_dependency *geminfo
+            self.development_dependencies << geminfo
+          end
+        end
+
         yield @spec
         ::PARAMS[:gemspec] = @spec
       end

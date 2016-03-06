@@ -36,7 +36,7 @@ $ gem install podcatcher --trust-policy HighSecurity
 $
 $ # Check the used version
 $ podcatcher --version
-3.2.10
+3.2.11
 $
 $ # Optionally enable podcatcher MAN pages on Unix-like systems
 $ gem install gem-man # do this once
