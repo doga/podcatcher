@@ -46,8 +46,9 @@ namespace :git do
   desc 'commit and tag the git repository'
   task all: [
     :commit,
-    :tag
-  ] #[:commit, :tag, :push]
+    :tag,
+    :push
+  ]
 
 end
 

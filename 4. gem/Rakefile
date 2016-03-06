@@ -1,7 +1,6 @@
-task :default do
-  puts Dir.pwd
-end
-
+task default: [
+  'gem:all'
+]
 
 namespace :gem do
 
@@ -13,7 +12,7 @@ namespace :gem do
   end
 
   desc "publish the gem"
-  task push: [:build] do
+  task :push do
     sh 'gem push *.gem'
   end
 
