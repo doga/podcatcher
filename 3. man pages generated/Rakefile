@@ -6,15 +6,15 @@ task default: [
 
 namespace :gem do
 
-  desc 'build the gem'
-  task :build do
+  desc 'generate the gem file'
+  task :generate do
     sh "gem build *.gemspec"
     gemfile = Dir['*.gem'].first
     mv gemfile, PARAMS[:next_step_dir]
   end
 
-  desc 'build the gem'
-  task all: [:build]
+  desc 'generate the gem file'
+  task all: [:generate]
 
 end
 
@@ -43,7 +43,7 @@ namespace :git do
     sh 'git push -u origin master'
   end
 
-  desc 'publish the git repository'
+  desc 'commit and tag the git repository'
   task all: [
     :commit,
     :tag

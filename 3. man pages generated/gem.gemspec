@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   # BEWARE: this authoritative data is used for resolving ERB markup in project files!
 
   s.name        = 'podcatcher'
-  s.version     = '3.2.5'
+  s.version     = '3.2.6.pre'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
@@ -14,7 +14,11 @@ Gem::Specification.new do |s|
   # SPDX IDs of chosen licenses (see http://spdx.org/licenses/)
   s.licenses    = Dir['*-LICENSE*'].map{|filename| filename.split('-').first}
 
-  if s.respond_to? :metadata=
+  # Add metadata
+  # if gem command supports Gemspec 2.0 or
+  # if I am using an OpenStruct instance
+  # for collecting data in my Rakefiles
+  if s.respond_to?(:metadata=) or s.class.to_s == 'OpenStruct'
     s.metadata = {
     }
   end

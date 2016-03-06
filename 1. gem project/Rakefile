@@ -1,57 +1,41 @@
 
 
 task default: [
-  :copy, 
   :eval_erb, 
   :make_binaries_executable
 ]
 
-task :copy do
-  Dir['**/*'].each do |filename|
-    file = Pathname.new filename
-    next unless file.file?
-
-    # Skip Rakefile and ERB files
-    next if filename.pathmap('%f') == 'Rakefile'
-    next if filename.pathmap('%x') == '.erb'
-
-    #$stderr.puts ">>>>>>>>>>>>>>mkdirp #{filename.pathmap "#{PARAMS[:next_step_dir]}/%d"}" 
-    mkdir_p filename.pathmap "#{PARAMS[:next_step_dir]}/%d"
-
-    #$stderr.puts ">>>>>>>>>>>>>>cp to outfile: #{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}" 
-    cp filename, "#{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}"
-  end
-end
-
 task :eval_erb do
+
+  # Evaluate the ERB markup in all files (expect Rakefile)
+  # in the context of the (fake) gem specification object.
   PARAMS[:gemspec].instance_exec do
     require 'fileutils'
     require 'pathname'
     require 'erb'
 
-    Dir['**/*.erb'].each do |_filename|
+    Dir['**/*'].reject{|fn|
+      fn == 'Rakefile' or fn.pathmap('%x') == '.gemspec'
+    }.each do |_filename|
+
+      # Skip directories
       _file = Pathname.new _filename
       next unless _file.file?
 
       # Resolve markup
-      #puts ">>>>>>>>>>>>>>Resolving: #{_filename}"
       _text = _file.read
       _text = ERB.new(_text).result binding
-      #$stderr.puts ">>>>>>>>>>>>>>resolved text:\n#{_text[0..280]}..." 
-
-      _outdir = "#{PARAMS[:next_step_dir]}/#{_filename.pathmap '%d'}"
-      #$stderr.puts ">>>>>>>>>>>>>>mkdir_p #{_filename.pathmap "#{PARAMS[:next_step_dir]}/%d"}" 
-      FileUtils.mkdir_p _outdir
 
       # Write resolved file
-      #$stderr.puts ">>>>>>>>>>>>>>outfile: #{PARAMS[:next_step_dir]}/#{_filename.pathmap '%X'}" 
+      _outdir = "#{PARAMS[:next_step_dir]}/#{_filename.pathmap '%d'}"
+      FileUtils.mkdir_p _outdir
       _outfile = Pathname (
-        "#{_outdir}/#{_filename.pathmap '%n'}"
+        "#{_outdir}/#{_filename.pathmap '%f'}"
       )
-      #puts "Writing to #{_outfile}"
       _outfile.write _text
     end
   end
+
 end
 
 task :make_binaries_executable do
@@ -60,14 +44,16 @@ task :make_binaries_executable do
   end
 end
 
+
 # Task parameters ##################################
 PARAMS = {
   next_step_dir: Dir['../2.*'].first,
   gemspec:       nil
 }
 
-# Capture gem specification by 'eval'ing the *.gemspec file
-# using a fake Gem::Specification class
+# Capture the gem specification by 'evaluating the *.gemspec file
+# using a fake OpenStruct object that passes for a
+# Gem::Specification instance.
 begin
   require 'ostruct'
   require 'pathname'
@@ -78,7 +64,6 @@ begin
         @spec.executables = []
         @spec.metadata = {}
         yield @spec
-        #$stderr.puts "#{@spec.inspect}" 
         ::PARAMS[:gemspec] = @spec
       end
     end
@@ -90,7 +75,6 @@ begin
     return unless gemspec.file?
     gemspec = gemspec.read
     self.instance_eval gemspec
-    #$stderr.puts "#{PARAMS.inspect}" 
   end
   read_gemspec
 end

@@ -1,49 +1,42 @@
 
-# Tasks #######################################
 
-task default: :all
-
-desc 'generate man pages and add them to git'
-task all: [
-  :copy,
+task default: [
+  :copy, 
   'man:all'
 ]
 
 task :copy do
-  Dir['**/*'].each do |filename|
-    # Skip man dir and Rakefile
-    next if filename.pathmap('%f') == 'Rakefile'
-    next if filename.pathmap('%d') == 'man'
+  Dir['**/*'].reject{|fn|
+    fn == 'Rakefile' or fn.pathmap('%x') == '.gemspec'
+  }.each do |filename|
 
+    # Skip directories
     file = Pathname.new filename
     next unless file.file?
 
-    #$stderr.puts ">>>>>>>>>>>>>>mkdirp #{filename.pathmap "#{PARAMS[:next_step_dir]}/%d"}" 
-    mkdir_p filename.pathmap "#{PARAMS[:next_step_dir]}/%d"
+    # Ignore manpage models
+    next if filename.pathmap('%x') == '.ronn'
 
-    #$stderr.puts ">>>>>>>>>>>>>>cp to outfile: #{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}" 
+    # Copy
+    mkdir_p filename.pathmap "#{PARAMS[:next_step_dir]}/%d"
     cp filename, "#{PARAMS[:next_step_dir]}/#{filename.pathmap('%p')}"
   end
 end
 
 namespace :man do
 
-  desc 'generate man pages'
-  task :build do
-    Dir['man/*.ronn'].each do |ronn|
-      # generate man page
-      #$stderr.puts "building man page from #{ronn}" 
+  task :man do
+    mkdir_p "#{PARAMS[:next_step_dir]}/man"
+  end
 
-      outdir = "#{PARAMS[:next_step_dir]}/#{ronn.pathmap '%d'}"
-      mkdir_p outdir
-      #mkdirp manfile.pathmap "#{PARAMS[:next_step_dir]}/%d"
-
-      outfile = "#{outdir}/#{ronn.pathmap '%n'}"
-      #manfile = manfile.pathmap "#{PARAMS[:next_step_dir]}/%p"
-      sh "ronn --roff --manual '#{PARAMS[:gemspec].name} manual' -s toc --pipe '#{ronn}' > '#{outfile}'"
+  desc 'build man pages'
+  task all: [:man] do
+    Dir['man/*.ronn'].each do |manpage_model|
+      sh "ronn --pipe --manual '#{PARAMS[:gemspec].name} manual' -s toc --roff '#{manpage_model}' > '#{PARAMS[:next_step_dir]}/#{manpage_model.pathmap('%X')}'"
     end
   end
 
+=begin
   namespace :git do
 
     desc 'add the man pages to git'
@@ -56,23 +49,22 @@ namespace :man do
 
   end
 
-
-  desc 'generate the man pages, then add and commit them to git'
-  task all: [:build] # [:build, 'git:all']
+  desc 'build the man pages, then add and commit them to git'
+  task all: [:build, 'git:all']
+=end
 
 end
-
-
 
 
 # Task parameters ##################################
 PARAMS = {
   next_step_dir: Dir['../3.*'].first,
-  gemspec:   nil
+  gemspec:       nil
 }
 
-# Capture gem specification by 'eval'ing the *.gemspec file
-# using a fake Gem::Specification class
+# Capture the gem specification by 'evaluating the *.gemspec file
+# using a fake OpenStruct object that passes for a
+# Gem::Specification instance.
 begin
   require 'ostruct'
   require 'pathname'
@@ -83,7 +75,6 @@ begin
         @spec.executables = []
         @spec.metadata = {}
         yield @spec
-        #$stderr.puts "#{@spec.inspect}" 
         ::PARAMS[:gemspec] = @spec
       end
     end
@@ -95,7 +86,7 @@ begin
     return unless gemspec.file?
     gemspec = gemspec.read
     self.instance_eval gemspec
-    #$stderr.puts "#{PARAMS.inspect}" 
   end
   read_gemspec
 end
+
