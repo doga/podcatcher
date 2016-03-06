@@ -64,10 +64,11 @@ PARAMS = {
 begin
   require 'ostruct'
   require 'pathname'
+
   module Gem
+    # Fake Gem::Specification class
     class Specification
       def initialize 
-        # Fake Gem::Specification class
         @spec = OpenStruct.new
         @spec.executables = []
         @spec.metadata = {}
