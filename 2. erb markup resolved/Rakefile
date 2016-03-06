@@ -32,7 +32,7 @@ namespace :man do
   desc 'build man pages'
   task all: [:man] do
     Dir['man/*.ronn'].each do |manpage_model|
-      sh "ronn --pipe --manual '#{PARAMS[:gemspec].name} manual' -s toc --roff '#{manpage_model}' > '#{PARAMS[:next_step_dir]}/#{manpage_model.pathmap('%X')}'"
+      sh "ronn --pipe --manual '#{PARAMS[:gemspec].name} v#{PARAMS[:gemspec].version} manual' -s toc --roff '#{manpage_model}' > '#{PARAMS[:next_step_dir]}/#{manpage_model.pathmap('%X')}'"
     end
   end
 
