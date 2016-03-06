@@ -51,7 +51,8 @@ Gem::Specification.new do |s|
   end
 
   # s.platform = Gem::Platform::RUBY # Gem::Platform::RUBY is the default, indicates a pure-Ruby gem.
-  s.required_ruby_version = '>= 1.8.2'
+  s.required_ruby_version =           '>= 1.8.2'
+  s.add_development_dependency 'ronn', '= 0.7.3'
 
 
   # Sign gem #############################################################
