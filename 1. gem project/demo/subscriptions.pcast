@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pcast PUBLIC "-//Apple Computer//DTD PCAST 1.0//EN" "http://www.itunes.com/DTDs/pcast-1.0.dtd">
-<pcast version="1.0">
-  <channel>
-    <link rel="feed" type="application/rss+xml" href="http://radio.weblogs.com/0001014/categories/dailySourceCode/rss.xml"/>
-    <title>Yahoo! Podcasts Feed</title>
-    <subtitle>Update by going to http://podcasts.yahoo.com/</subtitle>
-  </channel>
-</pcast>
