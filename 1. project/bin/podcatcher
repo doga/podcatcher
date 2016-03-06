@@ -1,0 +1,2493 @@
+#!/usr/bin/env ruby
+#:mode=ruby:
+
+# This program is released under the GNU General Public Licence. Please see
+# http://opensource.org/licenses/gpl-license.php for more information.
+# Author: Doga Armangil, armangild@yahoo.com
+
+PODCATCHER_WEBSITE = 'https://github.com/doga/podcatcher'
+PODCATCHER_VERSION = '<%= version %>'
+
+# todo: allow files to be selected not only by its MIME type, but also other attributes. Example: --content '^video/ width:680-1024 height:400'
+# todo: --proxy option
+# todo: download at most one enclosure or media:content per rss item
+# todo: support for --content and --language options in search mode
+# todo: code refactoring: do not duplicate option handling for 'options' option, factor out conversion between MIME type and file extension, avoid code duplication between implementations of download and search functions
+# todo: "item search" - search function that generates a feed containing relevant items of feeds (":item" or ":show" ?)
+# todo: option to specify share ratio for torrents
+# todo: symlink support in directory (for history, cache etc)
+# todo: improve playlist generation when using --strategy cache (only include audio and video content)
+# todo: improve --feeds implementation
+# todo: resuming of failed media downloads
+# todo: --subscriptions option (subscription d/l limit)
+# todo: informative exception messages
+# todo: only fetch bittorrent metainfo for d/l candidates
+# todo: option to download shows concurrently
+# todo: "lock" directory to prevent concurrency issues
+# todo: option to throttle non-BitTorrent downloads
+
+require 'uri'
+require 'open-uri'
+require 'ostruct'
+require 'optparse'
+require 'pathname'
+require 'date'
+require 'cgi'
+require 'yaml'
+require 'net/http'
+require 'rexml/document'
+
+include REXML
+
+#PODCATCHER_ENV = :development
+PODCATCHER_ENV = :production
+
+USER_AGENT = "podcatcher/#{PODCATCHER_VERSION} Ruby/#{RUBY_VERSION} #{RUBY_PLATFORM}"
+UPDATE_CHECK_INTERVAL = 6 #months
+
+opt = OpenStruct.new
+opt.PLAYLIST_TYPES = [:m3u, :smil, :pls, :asx, :tox, :xspf]
+opt.playlist_type = opt.PLAYLIST_TYPES[0]
+opt.size = 512
+opt.content_type = Regexp.new '' 
+opt.DESCRIPTION = <<END
+
+Armangil's podcatcher is a podcast client for the command line.
+It can download any type of content enclosed in RSS or Atom files, such as 
+MP3 or other audio content, video and images. A search function for 
+subscribing to feeds is also included. It provides several download 
+strategies, supports BitTorrent, offers cache management, and generates 
+playlists for media player applications. 
+
+As argument, it accepts feeds (RSS or Atom) or subscription lists 
+(OPML or iTunes PCAST), in the form of filenames or URLs (HTTP or FTP).
+Alternatively, it accepts one feed or subscription list from the standard 
+input.
+
+BitTorrent is supported both internally (through the RubyTorrent library) 
+and externally (.torrent files are downloaded, but the user handles
+them using a BitTorrent application). The latter is currently the most
+reliable method, as RubyTorrent is still in alpha phase.
+
+Concurrency is not handled: simultaneous executions of this program should
+target different directories.
+
+Visit $website for more information.
+
+Usage: #{$0} [options] [arguments] 
+END
+
+opt.DESCRIPTION.gsub! '$website', PODCATCHER_WEBSITE
+
+opt.dir = Pathname.new Dir.pwd
+opt.CACHEDIR= 'cache'
+opt.cachedir = opt.dir + opt.CACHEDIR
+opt.memsize = 1_000
+opt.empty = false
+opt.simulate = false
+opt.verbose = false
+opt.STRATEGIES = [:one, :new, :back_catalog, :all, :chron, :chron_one, :chron_all, :cache]
+opt.strategy = opt.STRATEGIES[0]
+opt.retries = 1
+opt.torrent_dir = nil
+opt.rubytorrent = false
+opt.upload_rate = nil #10
+opt.itemsize = 0
+opt.feeds = 1_000
+opt.FUNCTIONS = [:download, :search]
+opt.function = opt.FUNCTIONS[0]
+opt.per_feed = false
+opt.vote = false
+opt.check_for_update = false
+opt.ORDERS = [:random, :sequential, :alphabetical, :reverse]
+opt.order = opt.ORDERS[0]
+opt.horizon=nil
+opt.language=[]
+opt.restricted_names = true
+
+arguments = [] 
+
+option_parser = OptionParser.new() do |c|
+	c.banner = opt.DESCRIPTION
+	c.separator ""
+	c.separator "Options:"
+	c.on("-d", "--dir DIR", 
+		"Directory for storing application state.",
+		"Default value is current directory.\n") do |e|
+		contained=false
+		#cache directory inside old state directory?
+		statedir=opt.dir
+		cachedir=opt.cachedir
+		loop do
+			if cachedir==statedir
+				contained=true
+				break
+			end
+			break if cachedir.root?
+			cachedir=cachedir.parent
+		end
+		opt.dir = Pathname.new(Dir.pwd)+e
+		#cache directory inside new state directory?
+		unless contained
+			statedir=opt.dir
+			cachedir=opt.cachedir
+			loop do
+				if cachedir==statedir
+					contained=true
+					break
+				end
+				break if cachedir.root?
+				cachedir=cachedir.parent
+			end
+		end
+		#new state directory inside cache directory?
+		unless contained
+			statedir=opt.dir
+			cachedir=opt.cachedir
+			loop do
+				if cachedir==statedir
+					contained=true
+					break
+				end
+				break if statedir.root?
+				statedir=statedir.parent
+			end
+		end
+		#
+		opt.dir.mkdir unless opt.dir.exist?
+		exit 1 unless opt.dir.directory?
+		if contained
+			opt.cachedir = opt.dir + opt.CACHEDIR
+		end
+	end
+	c.on("-D", "--cachedir DIR", 
+		"Directory for storing downloaded content.",
+		"Default value is the '#{opt.CACHEDIR}' subdirectory",
+		"of the state directory (specified by ", 
+		"the --dir option).",
+		"This option is ignored if this directory",
+		"is inside the state directory, or if the",
+		"state directory is inside this directory.\n") do |e|
+		contained=false
+		#cache directory should be outside state directory
+		statedir=opt.dir
+		cachedir = Pathname.new(Dir.pwd)+e
+		loop do
+			if cachedir==statedir
+				contained=true
+				break
+			end
+			break if cachedir.root?
+			cachedir=cachedir.parent
+		end
+		next if contained
+		#state directory should be outside cache directory
+		statedir=opt.dir
+		cachedir = Pathname.new(Dir.pwd)+e
+		loop do
+			if cachedir==statedir
+				contained=true
+				break
+			end
+			break if statedir.root?
+			statedir=statedir.parent
+		end
+		next if contained
+		#accept cache directory
+		opt.cachedir=Pathname.new(Dir.pwd)+e
+	end
+	c.on("-s", "--size SIZE", 
+		"Size, in megabytes, of the cache directory", 
+		"(specified by the --cachedir option).",
+		"0 means unbounded. Default value is #{opt.size}.",
+		"This option also sets the upper limit for",
+		"the amount of content that can be downloaded",
+		"in one session.",
+		"Content downloaded during previous sessions",
+		"may be deleted by podcatcher in order to",
+		"make place for new content.\n") do |e|
+		opt.size = e.to_i
+		opt.size = nil if opt.size<1
+	end
+	c.on("-e", "--[no-]empty", 
+		"Empty the cache directory before", 
+		"downloading content.\n") do |e|
+		opt.empty = e
+	end
+	c.on("-p", "--[no-]perfeed", 
+		"Create one subdirectory per feed", 
+		"in the cache directory.\n") do |e|
+		opt.per_feed = e
+	end
+	c.on("-S", "--strategy S", opt.STRATEGIES, 
+		"Strategy to use when downloading content:",
+		"* back_catalog: download any content that",
+		" has not been downloaded before; prefer",
+		" recent content to older content (may ",
+		" download more than one content file per",
+		" feed),",
+		"* one: download one content file (not ",
+		" already downloaded) for each feed, with a ",
+		" preference for recent content,",
+		"* all: download all content, with a ",
+		" preference for recent content; even ",
+		" already downloaded content is downloaded ",
+		" once again (may download more than one",
+		" content file per feed),",
+		"* chron: download in chronological order",
+		" any content that has not been downloaded ",
+		" before; this is useful for audiobook", 
+		" podcasts etc (may download more than one",
+		" content file per feed),",
+		"* chron_one: download the oldest content of",
+		" each feed that has not already been ",
+		" downloaded, ",
+		"* chron_all: download all content in ",
+		" chronological order, even if the content",
+		" has already been downloaded (may download", 
+		" more than one content file per feed), ",
+		"* new: download the most recent content ",
+		" of each feed, if it has not already been ",
+		" downloaded (DEPRECATED: use 'one' instead", 
+		" of 'new'),",
+		"* cache: generate a playlist for content ",
+		" already in cache.",
+		"Default value is #{opt.strategy}.\n") do |e|
+		opt.strategy = e if e
+	end
+	c.on("-C", "--content REGEXP", 
+		"A regular expression that matches the",
+		"MIME types of content to be downloaded.",
+		"Examples: '^video/', '^audio/mpeg$'.",
+		"Default value is '', which matches any",
+		"type of content.\n") do |e|
+		begin 
+			opt.content_type = Regexp.new(e.downcase) if e
+		rescue Exception
+			$stderr.puts "Error: ignoring regular expression '#{e}'"
+		end 
+	end
+	c.on("-l", "--language LANG", 
+		"A list of language tags separated by",
+		"commas. Examples: 'en-us,de', 'fr'.",
+		"A feed whose language does not match",
+		"this list is ignored. By default, all",
+		"feeds are accepted. See",
+		"http://cyber.law.harvard.edu/rss/languages.html",
+		"and",
+		"http://cyber.law.harvard.edu/rss/rss.html#optionalChannelElements",
+		"for allowed tags.\n") do |e|
+		opt.language = e.split ','
+		for i in 0...opt.language.size
+			opt.language[i].downcase!
+			opt.language[i] = opt.language[i].split '-'
+		end
+	end
+	c.on("-H", "--horizon DATE", 
+		"Do not download content older than",
+		"the given date. The date has the format",
+		"yyyy.mm.dd (example: 2007.03.22) or",
+		"yyyy.mm (equivalent to yyyy.mm.01) or",
+		"yyyy (equivalent to yyyy.01.01).",
+		"#{opt.horizon ? 'Default value is '+opt.horizon.to_s.split('-').join('.') : 'By default, no horizon is specified'}.\n") do |e|
+		begin
+			date = e.split '.'
+			if (1..3).include? date.size
+				while date.size < 3
+					date << '01'
+				end
+				opt.horizon = Date.parse date.join('-')
+			end
+		rescue ArgumentError
+		end
+	end
+	c.on("-r", "--retries N", 
+		"Try downloading files (content, feeds",
+		"or subscription lists) at most N times", 
+		"before giving up. Default value is #{opt.retries}.\n") do |e|
+		opt.retries = e.to_i unless e.to_i<1
+	end
+	c.on("-t", "--type TYPE", opt.PLAYLIST_TYPES, 
+		"Type of the playlist written to",
+		"standard output. Accepted values are",
+		"#{opt.PLAYLIST_TYPES.join ', '}.",
+		"Default value is #{opt.playlist_type}.\n") do |e|
+		opt.playlist_type = e if e
+	end
+	c.on("-m", "--memsize N", 
+		"Remember last N downloaded content,",
+		"and do not download them again. ", 
+		"0 means unbounded. Default value is #{opt.memsize}.\n") do |e|
+		opt.memsize = e.to_i
+		opt.memsize = nil if opt.memsize<1
+	end
+	c.on("-o", "--order ORDER", opt.ORDERS, 
+		"The order in which feeds are traversed",
+		"when downloading content:",
+		"* random: randomizes the feed order,",
+		" so that every feed has an equal chance",
+		" when content is downloaded, even if",
+		" the cache size is small and the number",
+		" of feeds is big,",
+		"* alphabetical: orders feeds",
+		" alphabetically by using their titles,",
+		"* sequential: preserves the argument ",
+		" order (and the feed order in",
+		" subscription lists),",
+		"* reverse: reverses the feed order.",
+		"Default value is #{opt.order}.\n") do |e|
+		opt.order = e if e
+	end
+	c.on("-F", "--function FUNCTION", opt.FUNCTIONS, 
+		"Used function:",
+		"* download: downloads content from",
+		" specified feeds,",
+		"* search: generates an OPML subscription",
+		" list of feeds matching the specified",
+		" query; the only options relevant for ",
+		" search are -v, -r and -f.",
+		"Default value is #{opt.function}.\n") do |e|
+		opt.function = e if e
+	end
+	c.on("-f", "--feeds N", 
+		"Do not download more than N feeds", 
+		"(when using the download function),",
+		"or return the first N relevant feeds", 
+		"(when using the search function).",
+		"0 means unbounded. Default value is #{opt.feeds}.\n") do |e|
+		opt.feeds = e.to_i
+		opt.feeds = nil if opt.feeds<1
+	end
+	c.on("-T", "--torrentdir DIR", 
+		"Copy torrent files to directory DIR.",
+		"The handling of torrents through an",
+		"external BitTorrent client is left to",
+		"the user. If this option is not used,",
+		"torrents are handled internally (if",
+		"RubyTorrent is installed), or else",
+		"ignored.\n") do |e|
+		dir = Pathname.new e
+		if dir.exist? and dir.directory?
+			opt.torrent_dir = dir
+		end
+	end
+	c.on("-U", "--uploadrate N", 
+		"Maximum upload rate (kilobytes per second)",
+		"for the internal BitTorrent client.",
+		"#{opt.upload_rate ? 'Default value is '+opt.upload_rate : 'Unbounded by default'}.\n") do |e|
+		opt.upload_rate = e.to_i unless e.to_i<1
+	end
+	c.on("-i", "--itemsize N", 
+		"If downloaded content is less than N MB in",
+		"size (where N is an integer), fetch other",
+		"content of that same feed until this size",
+		"is reached. ",
+		"Default value is #{opt.itemsize}.",
+		"The intent here is to ensure that podcatcher",
+		"downloads about as much content from podcasts",
+		"that frequently post small content (in", 
+		"terms of minutes) as it does from podcasts",
+		"that post bigger content less frequently.",
+		"This option was more relevant in the early",
+		"days of podcasting when content size varied",
+		"greatly from one podcast to another. You",
+		"would rarely need to use this option today.\n") do |e|
+		opt.itemsize = e.to_i unless e.to_i<0
+	end
+	c.on("-c", "--[no-]cache", 
+		"Generate a playlist for content",
+		"already in cache.", 
+		"DEPRECATED, use '--strategy cache'.\n") do |e|
+		opt.strategy = :cache if e
+	end
+	c.on("-a", "--[no-]asif", 
+		"Do not download content, only download",
+		"feeds and subscription lists.", 
+		"Useful for testing.\n") do |e|
+		opt.simulate = e
+	end
+	c.on("-v", "--[no-]verbose", "Run verbosely.\n") do |e|
+		opt.verbose = e
+	end
+	c.on("-V", "--version", "Display current version and exit.\n") do
+		puts PODCATCHER_VERSION
+		exit
+	end
+	c.on("-h", "--help", "Display this message and exit.\n") do
+		puts c.to_s
+		exit
+	end
+	c.on("--[no-]restrictednames", 
+		'In the cache directory, make the names of', 
+		'created subdirectories and files acceptable', 
+		'for restrictive file systems such as VFAT', 
+		'and FAT, which are used on Windows and MP3', 
+		'player devices.',
+		"Enabled by default.\n") do |e|
+		opt.restricted_names = e
+	end
+	# c.on("--[no-]checkforupdate", 
+	# 	"Check once every #{UPDATE_CHECK_INTERVAL} months if a newer ",
+	# 	"version is available and display an ",
+	# 	"informational message. Disabled by default.\n") do |e|
+	# 	opt.check_for_update = e
+	# end
+	# c.on("--[no-]vote", 
+	# 	"Automatically vote for the downloaded",
+	# 	"podcasts at podcatcherstats.com.",
+	# 	"Disabled by default.\n") do |e|
+	# 	opt.vote = e
+	# end
+	c.on("-A", "--arguments FILENAME_OR_URL", 
+		"Read arguments from specified file.",
+		"Rules:",
+		"* accepts one argument per line,",
+		"* ignores empty lines and lines starting",
+		"  with #,",
+		"* this option may be used several times",
+		"  in one command.\n") do |e|
+		begin 
+			open(e) do |f|
+				loop do
+					line = f.gets
+					break unless line
+					line = line.chomp.strip
+					next if line.length == 0
+					next if line =~ /^\s*#/
+					arguments << line
+				end
+			end
+		rescue Exception
+			$stderr.puts "Error: arguments file could not be read and will be ignored"
+		end
+	end
+	c.on("-O", "--options FILENAME_OR_URL", 
+		"Read options from specified file.",
+		"The options file uses the YAML format.\n") do |e|
+		loop do
+			options = nil
+			begin 
+				open(e) do |f|
+					options = YAML::load(f)
+				end
+			rescue Exception
+				$stderr.puts "Error: options file could not be read and will be ignored"
+			end
+			break unless options
+			break unless options.instance_of? Hash
+			options.each() do |option, value|
+				case option.downcase
+				when 'arguments'
+					begin 
+						open(value) do |f|
+							loop do
+								line = f.gets
+								break unless line
+								line = line.chomp.strip
+								next if line.length == 0
+								arguments << line
+							end
+						end
+					rescue Exception
+						$stderr.puts "Error: arguments file could not be read and will be ignored"
+					end
+				when 'dir'
+					contained=false
+					#cache directory inside old state directory?
+					statedir=opt.dir
+					cachedir=opt.cachedir
+					loop do
+						if cachedir==statedir
+							contained=true
+							break
+						end
+						break if cachedir.root?
+						cachedir=cachedir.parent
+					end
+					opt.dir = Pathname.new(Dir.pwd)+value
+					#cache directory inside new state directory?
+					unless contained
+						statedir=opt.dir
+						cachedir=opt.cachedir
+						loop do
+							if cachedir==statedir
+								contained=true
+								break
+							end
+							break if cachedir.root?
+							cachedir=cachedir.parent
+						end
+					end
+					#new state directory inside cache directory?
+					unless contained
+						statedir=opt.dir
+						cachedir=opt.cachedir
+						loop do
+							if cachedir==statedir
+								contained=true
+								break
+							end
+							break if statedir.root?
+							statedir=statedir.parent
+						end
+					end
+					#
+					opt.dir.mkdir unless opt.dir.exist?
+					exit 1 unless opt.dir.directory?
+					if contained
+						opt.cachedir = opt.dir + opt.CACHEDIR
+					end
+				when 'cachedir'
+					contained=false
+					#cache directory should be outside state directory
+					statedir=opt.dir
+					cachedir = Pathname.new(Dir.pwd)+value
+					loop do
+						if cachedir==statedir
+							contained=true
+							break
+						end
+						break if cachedir.root?
+						cachedir=cachedir.parent
+					end
+					next if contained
+					#state directory should be outside cache directory
+					statedir=opt.dir
+					cachedir = Pathname.new(Dir.pwd)+value
+					loop do
+						if cachedir==statedir
+							contained=true
+							break
+						end
+						break if statedir.root?
+						statedir=statedir.parent
+					end
+					next if contained
+					#accept cache directory
+					opt.cachedir=Pathname.new(Dir.pwd)+value
+				when 'size'
+					if value.instance_of?(Fixnum)
+						opt.size = value
+						opt.size = nil if opt.size<1
+					end
+				when 'strategy'
+					opt.strategy = value.to_sym if opt.STRATEGIES.detect{|s| value.to_sym == s}
+				when 'type'
+					opt.playlist_type = value.to_sym if opt.PLAYLIST_TYPES.detect{|s| value.to_sym == s}
+				when 'retries'
+					opt.retries = value if value.instance_of?(Fixnum) and value>=1
+				when 'memsize'
+					if value.instance_of?(Fixnum)
+						opt.memsize = value
+						opt.memsize = nil if opt.memsize<1
+					end
+				when 'content'
+					begin 
+						opt.content_type = Regexp.new(value.downcase)
+					rescue Exception
+						$stderr.puts "Error: '#{value.downcase}' is not a valid regular expression and will be ignored"
+					end
+				when 'language'
+					opt.language = value.split ','
+					for i in 0...opt.language.size
+						opt.language[i].downcase!
+						opt.language[i] = opt.language[i].split '-'
+					end
+				when 'order'
+					opt.order = value.to_sym if opt.ORDERS.detect{|s| value.to_sym == s}
+				when 'function'
+					opt.function = value.to_sym if opt.FUNCTIONS.detect{|s| value.to_sym == s}
+				when 'feeds'
+					if value.instance_of?(Fixnum)
+						opt.feeds = value
+						opt.feeds = nil if opt.feeds<1
+					end
+				when 'horizon'
+					begin
+						date = value.split '.'
+						if (1..3).include? date.size
+							while date.size < 3
+								date << '01'
+							end
+							opt.horizon = Date.parse date.join('-')
+						end
+					rescue ArgumentError
+					end
+				when 'torrentdir'
+					dir = Pathname.new value
+					if dir.exist? and dir.directory?
+						opt.torrent_dir = dir
+					end
+				when 'uploadrate'
+					opt.upload_rate = value if value.instance_of?(Fixnum) and value>=1
+				when 'itemsize'
+					opt.itemsize = value if value.instance_of?(Fixnum) and value>=0
+				when 'perfeed'
+					opt.per_feed = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'cache'
+					opt.strategy = :cache if value.instance_of?(TrueClass)
+				when 'empty'
+					opt.empty = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'asif'
+					opt.simulate = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'checkforupdate'
+					opt.check_for_update = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'vote'
+					opt.vote = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'verbose'
+					opt.verbose = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				when 'restrictednames'
+					opt.restricted_names = value if value.instance_of?(FalseClass) or value.instance_of?(TrueClass)
+				end
+			end
+			break
+		end
+	end
+	c.separator ""
+	c.separator "Usage examples:"
+	c.separator ""
+	c.separator "    #{$0} http://feeds.feedburner.com/Ruby5"
+	c.separator ""
+	c.separator "    #{$0} -O options.yaml -A feeds.txt"
+	c.separator ""
+	c.separator "    #{$0} --dir ~/podcasts http://www.npr.org/podcasts.opml"
+	c.separator ""
+	c.separator "    #{$0} --dir ~/podcasts --strategy cache > cache.m3u"
+	c.separator ""
+	c.separator "    cat feeds.opml | #{$0} --dir ~/podcasts > latest.m3u"
+	c.separator ""
+	c.separator "    #{$0} -vd ~/podcasts -s 500 -m 10_000 -t tox feeds.opml > latest.tox"
+	c.separator ""
+	c.separator "    #{$0} -vF search news http://www.bbc.co.uk/podcasts.opml > bbc_news.opml"
+	c.separator ""
+	c.separator "    #{$0} -F search -f 12 news http://www.npr.org/podcasts.opml > npr_news.opml"
+end
+option_parser.parse!
+
+class Playlist
+	def initialize(playlisttype)
+		@playlisttype = playlisttype
+		@audio_or_video = Regexp.new '^audio/|^video/'
+		@size = 0
+	end
+	def start()
+		@str = ""
+		case @playlisttype
+		when :tox
+			@str = "# toxine playlist \n"
+		when :m3u
+			@str = "#EXTM3U\n"
+		when :pls
+			@str = "[playlist]\n"
+		when :asx
+			@str = <<END
+<asx version = "3.0">
+END
+		when :smil
+			@str = <<END
+<?xml version="1.0"?>
+<!DOCTYPE smil PUBLIC "-//W3C//DTD SMIL 2.0//EN" "http://www.w3.org/2001/SMIL20/SMIL20.dtd">
+<smil xmlns="http://www.w3.org/2001/SMIL20/Language">
+  <head></head>
+  <body>
+END
+		when :xspf
+			@doc = Document.new
+			@doc.xml_decl.dowrite
+			@doc.add_element Element.new("playlist")
+			@doc.root.add_attribute "version", "1"
+			@doc.root.add_attribute "xmlns", "http://xspf.org/ns/0/"
+			@tracklist = Element.new("trackList")
+			@doc.root.add_element @tracklist
+		end
+		print @str
+		@str
+	end 
+	def add(content)
+		return unless content
+		if content.mime
+			return unless @audio_or_video =~ content.mime
+		end
+		@size+=1
+		feed_title = content.feed_title
+		feed_title = '' unless feed_title
+		feed_title = sanitize feed_title
+		title = content.title
+		title = '' unless title
+		title = sanitize title
+		title = "#{content.pub_date.strftime('%Y.%m.%d')} - "+title if content.pub_date
+		entry = ""
+		case @playlisttype
+		when :m3u
+			feed_title = feed_title.gsub(/,/," ")
+			title = title.gsub(/,/," ")
+			entry = "#EXTINF:-1,[#{feed_title}] #{title}\n#{content.file.to_s}\n"
+		when :pls
+			entry = "File#{@size}:#{content.file}\nTitle#{@size}:[#{feed_title}] #{title}\nLength#{@size}:-1\n"
+		when :asx
+			entry = "  <entry><ref href='#{content.file.to_s.gsub(/&/,"&amp;").gsub(/'/,"&apos;").gsub(/"/,"&quot;")}' /></entry>\n"
+		when :smil
+			entry = "  <ref src='#{content.file.to_s.gsub(/&/,"&amp;").gsub(/'/,"&apos;").gsub(/"/,"&quot;")}' />\n"
+		when :tox
+			entry = "entry { \n\tidentifier = [#{feed_title}] #{title};\n\tmrl = #{content.file};\n};\n"
+		when :xspf
+			track = Element.new("track")
+			@tracklist.add_element track
+			title = Element.new("title")
+			title.add_text "[#{feed_title}] #{title}"
+			track.add_element title
+			location = Element.new("location")
+			location.add_text fileurl(content.file) 
+			track.add_element location
+		end
+		@str += entry
+		print entry
+		entry
+	end 
+	def finish()
+		res = ""
+		case @playlisttype
+		when :tox
+			res = "# end "
+		when :asx
+			res = <<END
+</asx>
+END
+		when :smil
+			res = <<END
+  </body>
+</smil>
+END
+		when :pls
+			res = "NumberOfEntries=#{@size}\nVersion=2\n"
+		when :xspf
+			@doc.write $stdout, 0
+		end 
+		@str += res
+		print res
+		res
+	end 
+	def to_s()
+		if @doc
+			@doc.to_s
+		else 
+			@str
+		end
+	end 
+private
+	def fileurl(path)
+		res = ""
+		loop do
+			path, base = path.split
+			if base.root?
+				if base.to_s != "/"
+					res = "/"+CGI.escape(base.to_s)+res
+				end
+				break
+			end
+			res = "/"+CGI.escape(base.to_s)+res
+		end
+		"file://"+res
+	end
+	def sanitize(text) #removes invisible characters from text
+		return nil unless text
+		res = ''
+		text.each_byte() do |c|
+			case c
+			when 0..31, 127 #control chars
+				res << ' '
+			else
+				res << c
+			end
+		end
+		res
+	end
+end
+
+class Update
+	def initialize(dir)
+		@now = Time.now
+		@data = {'last-check' => @now, 'latest-version' => PODCATCHER_VERSION, 'latest-version-description' => ''}
+		@server = URI.parse('http://www.podcatcherstats.com/podcatcher/latest_release')
+		@server = URI.parse('http://0.0.0.0:3000/podcatcher/latest_release') if PODCATCHER_ENV == :development
+		return unless dir
+		return unless dir.directory?
+		@file = dir + 'updates'
+		if @file.exist? and @file.file?
+			begin 
+				data = nil
+				@file.open() do |f|
+					data = YAML.load f
+				end
+				if data.instance_of? Hash
+					if newer_or_equal? data['latest-version']
+						data.each() do |key, value|
+							case key
+							when 'last-check'
+								@data[key] = value if value.instance_of? Time and value < @now
+							when 'latest-version'
+								@data[key] = value if value.instance_of? String
+							when 'latest-version-description'
+								@data[key] = value if value.instance_of? String
+							end
+						end
+					end
+				end
+			rescue Interrupt
+				@file.delete
+			rescue SystemExit
+				exit 1
+			rescue Exception
+				@file.delete
+			end
+		end
+		save 
+		exit 1 unless @file.file?
+	end
+	def check()
+		if @now - @data['last-check'] > 60.0 * 60.0 * 24 * 30 * UPDATE_CHECK_INTERVAL
+			@data['last-check'] = @now
+			begin 
+				Net::HTTP.start(@server.host, @server.port) do |http|
+					resp = http.get(@server.path, {'User-Agent' => USER_AGENT, 'Connection' => 'close'})
+					loop do
+						break unless resp.code =~ Regexp.new('^2')
+						doc = Document.new resp.body
+						break unless doc and doc.root and doc.root.name == 'release'
+						version = XPath.first doc.root, 'version'
+						break unless version
+						break unless newer? version.text 
+						description = XPath.first doc.root, 'description'
+						if description
+							description = description.text.strip
+						else 
+							description = ''
+						end
+						@data['latest-version'] = version.join '.'
+						@data['latest-version-description'] = description
+						save
+						break
+					end
+				#	read resp.body
+				end
+			rescue Interrupt
+			rescue SystemExit
+				exit 1
+			rescue Exception
+			end
+		end
+		flash
+	end
+	def to_s()
+		res = ''
+		if @data
+			@data.each() do |key, value|
+				res+= "#{key}: #{value}\n"
+			end
+		end
+		res
+	end
+private
+	def flash()
+		return unless newer? @data['latest-version'] #if equal? @data['latest-version']
+		#constants
+		line_length = 70
+		p = '**** '
+		#
+		$stderr.puts ""
+		$stderr.puts p+"New release:"
+		$stderr.puts p+"Version #{@data['latest-version']} is available at #{PODCATCHER_WEBSITE}."
+		if @data['latest-version-description'].size>0
+			descr = []
+			@data['latest-version-description'].each() do |line|
+				descr =  descr + line.chomp.split(' ')
+			end
+			line = nil
+			descr.each() do |word|
+				if line and (line + ' ' + word).size>line_length
+					$stderr.puts p+line
+					line = nil
+				end
+				if line
+					line += ' '+word
+				else 
+					line = word
+				end
+				
+			end
+			$stderr.puts p+line if line
+		end
+		$stderr.puts ""
+	end
+	def save()
+		@file.open('w') do |f|
+			YAML.dump @data, f
+		end
+	end
+	def compare_with(version) # Return values: -1: version<installed_version, 0: version==installed_version, 1: version>installed_version
+		return -1 unless version
+		version = version.strip.split '.'
+		for i in 0...version.size
+			version[i] = version[i].to_i
+		end
+		current_version = PODCATCHER_VERSION.strip.split '.'
+		for i in 0...current_version.size
+			current_version[i] = current_version[i].to_i
+		end
+		res = 0
+		for i in 0...version.size
+			break if i>=current_version.size
+			if current_version[i]>version[i]
+				res = -1
+				break
+			end
+			if current_version[i]<version[i]
+				res = 1
+				break
+			end
+		end
+		res
+	end
+	def newer?(version)
+		compare_with(version) == 1
+	end
+	def newer_or_equal?(version)
+		compare_with(version) != -1
+	end
+	def equal?(version)
+		compare_with(version) == 0
+	end
+end 
+
+class Stats
+	def initialize(dir)
+		srand
+		@now = Time.now
+		@data = {'ping-probability' => 1.0}
+		@server = URI.parse('http://www.podcatcherstats.com/podcatcher/ping')
+		@server = URI.parse('http://0.0.0.0:3000/podcatcher/ping') if PODCATCHER_ENV == :development
+		return unless dir
+		return unless dir.directory?
+		@file = dir + 'votes'
+		if @file.exist? and @file.file?
+			data = nil
+			begin 
+				@file.open() do |f|
+					data = YAML.load f
+				end
+			rescue Interrupt
+				@file.delete
+			rescue SystemExit
+				exit 1
+			rescue Exception
+				@file.delete
+			end
+			if data.instance_of? Hash
+		#		$stderr.puts "votes file read"
+				data.each() do |key, value|
+					case key
+					when 'ping-probability'
+						@data[key] = value unless value<0.0 or 1.0<value
+					when 'last-session'
+						@data[key] = value unless @now<value
+					when 'last-ping'
+						@data[key] = value unless @now<value
+					end
+				end
+			else 
+		#		$stderr.puts "votes file could not be read"
+				save
+			end
+		end
+		if @data['last-ping']
+			if @data['last-session']
+				@data['last-ping'] = nil if @data['last-session']<@data['last-ping']
+			else 
+				@data['last-ping'] = nil
+			end
+		end
+		save unless @file.exist?
+		exit 1 unless @file.file?
+	end
+	def ping(opt, feeds)
+		return unless opt
+		return unless feeds
+		return if opt.simulate
+		#constants
+		max_sent_feeds = 50 #max nb of feed info to be sent
+		#
+		now = Time.now
+		begin 
+			loop do
+				break unless opt.vote
+				break unless ping?
+		#		$stderr.puts "ping: #{@server}"
+				stats = Document.new
+				stats.add_element 'downloading'
+				#state
+				stats.root.add_element state_element #(opt)
+				#feeds
+				sent_feeds = 0
+				feeds.each() do |feed|
+					if feed.size > 0 and feed[0].feedurl and feed[0].feedurl.size<255 and (not URI.parse(feed[0].feedurl).instance_of?(URI::Generic)) and sent_feeds < max_sent_feeds
+						stats.root.add_element 'feed', {'url' => feed[0].feedurl}
+						sent_feeds += 1
+					end
+				end
+				break unless sent_feeds>0
+				#send
+				stats_str = ''
+				stats.write stats_str
+				if PODCATCHER_ENV != :production
+					$stderr.puts "Sent:"
+					$stderr.puts stats_str
+				end
+				change_state = nil
+				Net::HTTP.start(@server.host, @server.port) do |http|
+					resp = http.request_post @server.path, stats_str, 'User-Agent' => USER_AGENT, 'Content-Type' => 'application/xml', 'Connection' => 'close'
+					if PODCATCHER_ENV != :production
+						$stderr.puts "Received:"
+						$stderr.puts "#{resp.body}" 
+					end
+					change resp.body
+				end
+				@data['last-ping'] = now+0
+				break
+			end
+		rescue Interrupt
+	#		$stderr.puts "int1 #{$!}"
+		rescue SystemExit
+			exit 1
+		rescue Exception
+	#		$stderr.puts "exc #{$!}"
+		end
+		@data['last-session'] = now+0
+		save
+	#	$stderr.puts "#{to_s}"
+	end
+	def ping_search(opt, query)
+		return unless opt
+		return unless query
+		return if opt.simulate
+		now = Time.now
+		begin 
+			loop do
+				break unless opt.vote
+				break unless ping?
+		#		$stderr.puts "ping.."
+				stats = Document.new
+				stats.add_element 'searching', {'query' => query}
+				#state
+				stats.root.add_element state_element
+				#send
+				stats_str = ''
+				stats.write stats_str
+		#		$stderr.puts stats_str
+				change_state = nil
+				Net::HTTP.start(@server.host, @server.port) do |http|
+					resp = http.request_post @server.path, stats_str, 'User-Agent' => USER_AGENT, 'Content-Type' => 'application/xml', 'Connection' => 'close'
+		#			$stderr.puts "#{resp.body}"
+					change resp.body
+				end
+				@data['last-ping'] = now+0
+				break
+			end
+		rescue Interrupt
+	#		$stderr.puts "int1 #{$!}"
+		rescue SystemExit
+			exit 1
+		rescue Exception
+	#		$stderr.puts "exc #{$!}"
+		end
+		@data['last-session'] = now+0
+		save
+	#	$stderr.puts "#{to_s}"
+	end
+	def to_s()
+		res = ''
+		if @data
+			@data.each() do |key, value|
+				res+= "#{key}: #{value}\n"
+			end
+		end
+		res
+	end
+private
+	def save()
+		@file.open('w') do |f| 
+			YAML.dump @data, f 
+		end 
+	end
+	def ping?()
+		r = rand
+	#	$stderr.puts "random: #{r}, ping-probability: #{@data['ping-probability']}"
+		return r < @data['ping-probability']
+	end
+	def change(doc_str)
+		return unless doc_str
+		begin 
+			change_state = Document.new doc_str
+			loop do
+				break unless change_state
+				break unless change_state.root
+				break unless change_state.root.name == 'state'
+				#ping-probability
+				ping = change_state.root.attributes['ping']
+				if ping and ping.size>0
+					ping = ping.to_f
+					unless ping<0.0 or 1.0<ping
+						@data['ping-probability'] = ping
+					end
+				end
+				#
+				break
+			end
+		rescue Interrupt
+		rescue SystemExit
+			exit 1
+		rescue Exception
+		end
+	end
+	def state_element #(opt=nil)
+		state = Element.new 'state'
+		state.add_attribute('ping', @data['ping-probability']) if @data['ping-probability']
+		if @data['last-session']
+			age_in_seconds = @now - @data['last-session'] #Float
+			age_in_days = age_in_seconds/60.0/60.0/24.0
+			state.add_attribute('age', age_in_days)
+		end
+	#	return state unless opt
+	#	state.add_attribute('strategy', opt.strategy) 
+	#	state.add_attribute('order', opt.order) 
+	#	state.add_attribute('cache', opt.size / 1_000_000) if opt.size
+	#	state.add_attribute('content', opt.content_type.source) if opt.content_type and opt.content_type.source.size<80
+		state
+	end
+end 
+
+class History
+	def initialize(dir)
+		@history = dir + "history"
+		@history_old = dir + "history-old"
+		unless @history.exist?
+			@history_old.rename @history if @history_old.exist?
+		end
+		@history.open("w"){|f|}unless @history.exist?
+		exit 1 unless @history.file?
+		@history_old.delete if @history_old.exist?
+	end
+	def mark_old_content(feeds)
+		feeds.each() do |feed|
+			feed.each() do |content|
+				content.in_history = false
+			end
+		end
+		@history.each_line() do |url|
+			url = url.chomp
+			feeds.each() do |feed|
+				feed.each() do |content|
+					next if content.in_history
+					content.in_history = content.url == url
+				end
+			end
+		end
+	end 
+	def add(content)
+		begin 
+			@history.open("a") do |f|
+				f.puts content.url
+			end
+		rescue Interrupt, SystemExit
+			exit 1
+		rescue Exception
+			$stderr.puts "Error: history file could not be updated"
+		end
+	end 
+	def trim(limit)
+		begin 
+			history_size = 0
+			@history.each_line() do |url|
+				history_size += 1
+			end
+			if history_size > limit #shrink
+				@history_old.delete if @history_old.exist?
+				@history.rename @history_old
+				@history.open("w") do |f|
+					@history_old.each_line() do |url|
+						f.print(url) if history_size <= limit
+						history_size -= 1
+					end
+				end
+				@history_old.unlink
+			end
+		rescue Interrupt, SystemExit
+			exit 1
+		rescue Exception
+			$stderr.puts "Error: failure during history file clean-up."
+		end if limit
+	end 
+end 
+
+class Cache 
+	def initialize(opt)
+		super()
+		@opt = opt
+		@@TORRENT = "application/x-bittorrent"
+		@@MEDIA_RSS_NS = ['http://search.yahoo.com/mrss/']
+		@@MEDIA_RSS_NS << 'http://search.yahoo.com/mrss'
+		@@ATOM_NS = Regexp.new "^http://purl.org/atom/ns#"
+		#history
+		@history = History.new opt.dir
+		#stats
+		@stats = Stats.new opt.dir
+		#cache 
+		@cache_dir = opt.cachedir #opt.dir+"cache"
+		@cache_dir.mkdir() unless @cache_dir.exist?
+		exit 1 unless @cache_dir.directory?
+		@cache_dir.each_entry() do |e|
+			e = @cache_dir+e
+			e = e.cleanpath
+			next if e == @cache_dir or e == @cache_dir.parent
+			if e.directory? #feed subfolder
+				e.each_entry() do |e2|
+					e2 = e+e2
+					next if e2.directory?
+					if opt.empty
+						unless opt.simulate or opt.strategy == :cache
+							$stderr.puts "Deleting: #{e2}" if opt.verbose
+							e2.delete
+						end
+					end
+				end
+				e.delete if e.entries.size == 2
+			elsif opt.empty
+				unless opt.simulate or opt.strategy == :cache
+					$stderr.puts "Deleting: #{e}" if opt.verbose
+					e.delete
+				end
+			end
+		end
+		@cache = @cache_dir.entries.collect() do |e|
+			e = @cache_dir+e
+			e = e.cleanpath
+			next if e == @cache_dir or e == @cache_dir.parent
+			if e.file?
+				content = OpenStruct.new
+				content.file = e
+				content.size = e.size
+				content.title = e.to_s
+				content
+			elsif e.directory?
+				e.entries.collect() do |e2|
+					e2 = e+e2
+					if e2.file?
+						content = OpenStruct.new
+						content.file = e2
+						content.size = e2.size
+						content.title = e2.to_s
+						content
+					else 
+						nil
+					end
+				end
+			else 
+				nil
+			end
+		end
+		@cache.flatten!
+		@cache.compact!
+		@cache.sort!() do |e,e2|
+			e.file.mtime() <=> e2.file.mtime()
+		end
+	end 
+	def createplaylist(urls) 
+		playlist = Playlist.new @opt.playlist_type
+		if @opt.strategy == :cache
+			playlist.start
+			@cache.reverse!
+			@cache.each() do |content|
+				playlist.add content
+			end
+			playlist.finish
+			return playlist.to_s
+		end
+		playlist.start
+		doc = nil
+		if urls.size == 0
+			$stderr.puts "Reading document from standard input" if @opt.verbose
+			begin 
+				xml = ""
+				$stdin.each() do |e|
+					xml += e
+				end
+				doc = OpenStruct.new
+				doc.dom = Document.new(xml)
+				doc = nil unless doc.dom
+			rescue Interrupt, SystemExit
+				exit 1
+			rescue Exception
+				$stderr.puts "Error: unreadable document"
+				doc = nil
+			end 
+		end
+		dochistory = []
+		feeds = []
+		urls.uniq!
+		links = urls.collect() do |e|
+			l = OpenStruct.new
+			l.url = e
+			l
+		end
+		loop do	
+			break if @opt.feeds and feeds.size >= @opt.feeds
+			while not doc
+				link = links.shift
+				break unless link
+				if dochistory.detect{|e| e == link.url}
+					$stderr.puts "Skipping duplicate: #{link.url}" if @opt.verbose
+					next
+				end
+				$stderr.puts "Fetching: #{link.url}" if @opt.verbose
+				dochistory << link.url
+				begin 
+					doc = fetchdoc(link)
+				rescue Interrupt, SystemExit
+					exit 1
+				rescue Exception
+					$stderr.puts "Error: skipping unreadable document"
+				end 
+			end
+			break unless doc
+			begin
+				if doc.dom.root.name == "opml"
+					newlinks = []
+					outlines = []
+					doc.dom.elements.each("/opml/body") do |body|
+						body.elements.each() do |e|
+							next unless e.name == 'outline'
+							outlines << e
+						end
+					end
+					while outlines.size>0
+						outline = outlines.shift
+						url = outline.attributes["xmlUrl"]
+						url = outline.attributes["url"] unless url
+						if url
+							begin 
+								url = URI.parse(doc.url).merge(url).to_s if doc.url
+								link = OpenStruct.new
+								link.url = url
+								link.referrer = doc.url
+								newlinks << link
+							rescue URI::InvalidURIError
+							end
+							next
+						end
+						new_outlines = []
+						outline.elements.each() do |e|
+							next unless e.name == 'outline'
+							new_outlines << e
+						end
+						outlines = new_outlines + outlines
+					end
+					links = newlinks + links
+				elsif doc.dom.root.name == "pcast"
+					newlinks = []
+					XPath.each(doc.dom,"//link[@rel='feed']") do |outline|
+						url = outline.attributes["href"]
+						next unless url
+						begin 
+							url = URI.parse(doc.url).merge(url).to_s if doc.url
+							link = OpenStruct.new
+							link.url = url
+							link.referrer = doc.url
+							newlinks << link
+						rescue URI::InvalidURIError
+						end
+					end
+					links = newlinks + links
+				elsif doc.dom.root.namespace =~ @@ATOM_NS
+					feed = []
+					XPath.each(doc.dom.root,"//*[@rel='enclosure']") do |e2|
+						next unless e2.namespace =~ @@ATOM_NS
+						content = OpenStruct.new
+						XPath.each(e2,"parent::/title/text()") do |node|
+							content.title = ""
+							node.value.each_line() do |e3| #remove line breaks
+								content.title+= e3.chomp+" "
+							end
+							content.title.strip!
+						end
+						XPath.each(e2,"parent::/created/text()") do |node|
+							pub_date = ""
+							node.value.each_line() do |e3| #remove line breaks
+								pub_date+= e3.chomp+" "
+							end
+							begin 
+								content.pub_date = DateTime.parse(pub_date.strip, true)
+							rescue Exception
+							end 
+						end
+						content.mime = e2.attributes["type"].downcase
+						next if @opt.content_type !~ content.mime and content.mime != @@TORRENT
+						next if content.mime == @@TORRENT and not (@opt.torrent_dir or @opt.rubytorrent)
+						content.feedurl = doc.url
+						begin 
+							content.url = URI.parse(content.feedurl).merge(e2.attributes["href"]).to_s if content.feedurl
+							content.size = e2.attributes["length"].to_i
+							content.size = 2 unless content.size and content.size>0 
+							content.size = 0 if content.mime == @@TORRENT #not strictly necessary
+							feed << content
+						rescue URI::InvalidURIError
+						end
+					end
+					#sort by date
+					feed.sort!() do |a,b|
+						if a.pub_date
+							if b.pub_date
+								b.pub_date <=> a.pub_date
+							else 
+								-1
+							end
+						else 
+							if b.pub_date
+								1
+							else 
+								0
+							end
+						end
+					end
+					feed.each() do |content|
+						$stderr.puts "Enclosure: #{content.url}"
+					end if @opt.verbose
+					#title
+					node = XPath.first(doc.dom,"/feed/title/text()")
+					feed_title = ""
+					node.value.each_line() do |e3| #remove line breaks
+						feed_title += e3.chomp+" "
+					end
+					feed_title.strip!
+					feed.each() do |content|
+						content.feed_title = feed_title
+					end
+					#
+					feeds << feed
+				elsif doc.dom.root.name = "rss"
+					feed = []
+					doc.dom.root.elements.each() do |e| #channel
+						e.elements.each() do |e1| #item
+							title = ''
+							XPath.each(e1,"title/text()") do |node|
+								title = ''
+								node.value.each_line() do |e3| #remove line breaks
+									title+= e3.chomp+" "
+								end
+								title.strip!
+							end
+							pub_date = nil
+							XPath.each(e1,"pubDate/text()") do |node|
+								pub_date = ""
+								node.value.each_line() do |e3| #remove line breaks
+									pub_date+= e3.chomp+" "
+								end
+								begin 
+									pub_date = DateTime.parse(pub_date.strip, true)
+								rescue Exception
+									pub_date = nil
+								end 
+							end
+							e1.elements.each() do |e2|
+								if e2.name == "enclosure"
+									content = OpenStruct.new
+									content.title = title
+									content.pub_date = pub_date
+									content.mime = e2.attributes["type"].downcase
+									next if @opt.content_type !~ content.mime and content.mime != @@TORRENT
+									next if content.mime == @@TORRENT and not (@opt.torrent_dir or @opt.rubytorrent)
+									content.feedurl = doc.url
+									begin 
+										content.url = URI.parse(content.feedurl).merge(e2.attributes["url"]).to_s if content.feedurl
+										content.size = e2.attributes["length"].to_i
+										content.size = 2 unless content.size and content.size>0 
+										content.size = 0 if content.mime == @@TORRENT #not strictly necessary
+										feed << content
+									rescue URI::InvalidURIError
+									end
+								elsif @@MEDIA_RSS_NS.include? e2.namespace
+									case e2.name
+									when 'content'
+										content = OpenStruct.new
+										content.title = title
+										content.pub_date = pub_date
+										content.mime = e2.attributes["type"].downcase
+										next if @opt.content_type !~ content.mime and content.mime != @@TORRENT
+										next if content.mime == @@TORRENT and not (@opt.torrent_dir or @opt.rubytorrent)
+										content.feedurl = doc.url
+										begin 
+											content.url = URI.parse(content.feedurl).merge(e2.attributes["url"]).to_s if content.feedurl
+											content.size = e2.attributes["fileSize"].to_i
+											content.size = 2 unless content.size and content.size>0 
+											content.size = 0 if content.mime == @@TORRENT #not strictly necessary
+											feed << content
+										rescue URI::InvalidURIError
+										end
+									when 'group'
+										e2.elements.each() do |e4|
+											if e4.name == 'content' and @@MEDIA_RSS_NS.include?(e4.namespace)
+												content = OpenStruct.new
+												content.title = title
+												content.pub_date = pub_date
+												content.mime = e4.attributes["type"].downcase
+												next if @opt.content_type !~ content.mime and content.mime != @@TORRENT
+												next if content.mime == @@TORRENT and not (@opt.torrent_dir or @opt.rubytorrent)
+												content.feedurl = doc.url
+												begin 
+													content.url = URI.parse(content.feedurl).merge(e4.attributes["url"]).to_s if content.feedurl
+													content.size = e4.attributes["fileSize"].to_i
+													content.size = 2 unless content.size and content.size>0 
+													content.size = 0 if content.mime == @@TORRENT #not strictly necessary
+													feed << content
+												rescue URI::InvalidURIError
+												end
+												break
+											end
+										end
+									end
+									
+								end
+							end if e1.name == "item"
+						end if e.name == "channel"
+					end
+					#remove duplicates (duplication occurs in particular for content declared as both enclosure and Media RSS content)
+					for i in 0...feed.size
+						content = feed[i]
+						next unless content
+						for j in i+1...feed.size
+							next unless feed[j]
+							feed[j] = nil if feed[j].url == content.url
+						end
+					end
+					feed.compact!
+					#sort by date
+					feed.sort!() do |a,b|
+						if a.pub_date
+							if b.pub_date
+								b.pub_date <=> a.pub_date
+							else 
+								-1
+							end
+						else 
+							if b.pub_date
+								1
+							else 
+								0
+							end
+						end
+					end
+					feed.each() do |content|
+						$stderr.puts "Enclosure: #{content.url}"
+					end if @opt.verbose
+					#title
+					node = XPath.first(doc.dom,"//channel/title/text()")
+					feed_title = ""
+					node.value.each_line() do |e3| #remove line breaks
+						feed_title += e3.chomp+" "
+					end
+					feed_title.strip!
+					feed.each() do |content|
+						content.feed_title = feed_title
+					end
+					#language
+					if @opt.language.size > 0
+						loop do
+							node = XPath.first doc.dom, '//channel/language/text()'
+							break unless node
+							break unless node.value
+							feed_lang = node.value.strip.downcase.split '-'
+							break if feed_lang.size == 0
+							langmatch = @opt.language.collect() do |lang|
+								next false if feed_lang.size < lang.size
+								matches = true
+								for i in 0...lang.size
+									next if lang[i] == feed_lang[i]
+									matches = false
+								end
+								matches
+							end
+							feeds << feed if langmatch.include? true
+							break
+						end
+					else
+						feeds << feed
+					end
+				end
+			rescue Interrupt, SystemExit
+				exit 1
+			rescue Exception
+				$stderr.puts "Error: skipping document because of an internal error #{$@}"
+			end
+			doc = nil
+		end
+		#remove content older than the horizon date
+		if @opt.horizon
+			feeds.each() do |feed|
+				for i in 0...feed.size
+					if feed[i].pub_date
+						feed[i] = nil if feed[i].pub_date < @opt.horizon
+					else
+						feed[i] = nil
+					end
+				end
+				feed.compact!
+			end
+		end
+		#apply download strategy
+		@history.mark_old_content feeds
+		if @opt.strategy == :chron or @opt.strategy == :chron_one or @opt.strategy == :chron_all
+			feeds.each() do |feed|
+				feed.reverse!
+			end
+			@opt.strategy = :back_catalog if @opt.strategy == :chron
+			@opt.strategy = :one if @opt.strategy == :chron_one
+			@opt.strategy = :all if @opt.strategy == :chron_all
+		end
+		case @opt.strategy #remove ignored content
+		when :new
+			feeds.each() do |feed|
+				in_hist = nil
+				for i in 0...feed.size
+					if feed[i].in_history
+						in_hist = i
+						break
+					end
+				end
+				feed.slice! in_hist...feed.size if in_hist
+			end
+		when :all
+		else 
+			feeds.each() do |feed|
+				for i in 0...feed.size
+					feed[i] = nil if feed[i].in_history
+				end
+				feed.compact!
+			end
+		end
+		if @opt.strategy == :new or @opt.strategy == :one 
+			feeds.each() do |feed|
+				itemsize = 0
+				index = nil
+				for i in 0...feed.size
+					itemsize += feed[i].size
+					if itemsize >= @opt.itemsize
+						index = i+1
+						break
+					end
+				end
+				feed.slice! index...feed.size if index
+			end
+		end
+		#feed order
+		case @opt.order
+		when :random
+			srand
+			feeds.sort!() do |a,b|
+				if a.size>0
+					if b.size>0
+						rand(3)-1
+					else 
+						-1
+					end
+				else 
+					if b.size>0
+						1
+					else 
+						0
+					end
+				end
+			end
+		when :alphabetical
+			feeds.sort!() do |a,b|
+				if a.size>0
+					if b.size>0
+						a[0].feed_title <=> b[0].feed_title
+					else 
+						-1
+					end
+				else 
+					if b.size>0
+						1
+					else 
+						0
+					end
+				end
+			end
+		when :reverse
+			feeds.reverse!
+		end
+		#remove duplicate content
+		feeds.each() do |feed|
+			feed.each() do |content|
+				next unless content
+				dup = false
+				feeds.each() do |f|
+					for i in 0...f.size
+						next unless f[i]
+						if f[i].url == content.url
+							f[i] = nil if dup
+							dup = true
+						end
+						$stderr.puts "Removed duplicate: #{content.url}" unless f[i] or (not @opt.verbose)
+					end
+				end
+			end
+			feed.compact!
+		end
+		#send usage statistics
+		@stats.ping @opt, feeds
+		#fetch torrent metainfo files
+		feeds.each() do |feed|
+			feed.each() do |content|
+				next if content.mime != @@TORRENT
+				content.mime = nil
+				begin 
+					$stderr.puts "Fetching torrent metainfo: #{content.url}" if @opt.verbose
+					content.metainfo = RubyTorrent::MetaInfo.from_location content.url
+					content.size = content.metainfo.info.length
+					content.mime = case content.metainfo.info.name.downcase
+						when /\.mp3$/
+							"audio/mpeg"
+						when /\.wma$/
+							"audio/x-ms-wma"
+						when /\.mpg$|\.mpeg$|\.mpe$|\.mpa$|\.mp2$|\.mpv2$/
+							"video/mpeg"
+						when /\.mov$|\.qt$/
+							"video/quicktime"
+						when /\.avi$/
+							"video/x-msvideo"
+						when /\.wmv$/
+							"video/x-ms-wmv"
+						when /\.asf$/
+							"video/x-ms-asf"
+						when /\.m4v$|\.mp4$|\.mpg4$/
+							"video/mp4"
+						else 
+							nil
+						end 
+					content.url = nil unless content.mime
+					content.url = nil unless (@opt.content_type =~ content.mime)
+					content.url = nil unless content.metainfo.info.single?
+				rescue Interrupt
+					content.url = nil
+					$stderr.puts "Error: unreadable torrent metainfo" if @opt.verbose
+				rescue SystemExit
+					exit 1
+				rescue Exception
+					content.url = nil
+					$stderr.puts "Error: unreadable torrent metainfo" if @opt.verbose
+				end 
+			end
+			for i in 0...feed.size
+				feed[i] = nil unless feed[i].url
+			end
+			feed.compact!
+		end
+		#fetch enclosures
+		item = total = 0
+		@cache.each() do |e|
+			total+= e.size
+		end
+		torrents = []
+		torrentfiles = []
+		inc = 1
+		while inc>0
+			inc = 0
+			itemsize = 0
+			feeds.each do |e|
+				#find next enclosure in feed
+				content = e.shift
+				unless content
+					itemsize = 0
+					next
+				end
+				#make place in cache
+				while @opt.size and content.size+inc+total > @opt.size
+					break if @opt.simulate
+					f = @cache.shift
+					break unless f
+					total-= f.size
+					parent = f.file.parent
+					$stderr.puts "Deleting: #{f.file}" if @opt.verbose
+					f.file.delete 
+					if parent.parent != @opt.dir and parent.entries.size == 2
+						#delete empty feed subfolder
+						$stderr.puts "Deleting: #{parent}" if @opt.verbose
+						parent.delete 
+					end
+				end
+				unless @opt.simulate
+					break if @opt.size and content.size+inc+total > @opt.size
+				end
+				#download
+				1.upto(@opt.retries) do |i|
+					begin 
+						if content.metainfo
+							if @opt.torrent_dir
+								loop do
+									content.file = @opt.torrent_dir+(Time.now.to_f.to_s+".torrent")
+									break unless content.file.exist?
+									sleep 1
+								end
+								$stderr.puts "Copying: #{content.url} to #{content.file}" if @opt.verbose and i == 1
+								if not @opt.simulate 
+									if content.feedurl and (content.feedurl =~ %r{^http:} or content.feedurl =~ %r{^ftp:})
+										open(content.url, "User-Agent" => USER_AGENT, "Referer" => content.feedurl) do |fin|
+											content.file.open("wb") do |fout|
+												fin.each_byte() do |b|
+													fout.putc b
+												end
+											end
+										end
+									else 
+										open(content.url, "User-Agent" => USER_AGENT) do |fin|
+											content.file.open("wb") do |fout|
+												fin.each_byte() do |b|
+													fout.putc b
+												end
+											end
+										end
+									end
+								end
+							else
+								$stderr.puts "Fetching in background: #{content.url}" if @opt.verbose and i == 1
+								unless @opt.simulate
+									content.file = filename(content, @cache_dir)
+									package = RubyTorrent::Package.new content.metainfo, content.file.to_s
+									bt = RubyTorrent::BitTorrent.new content.metainfo, package, :dlratelim => nil, :ulratelim => @opt.upload_rate, :http_proxy => ENV["http_proxy"]
+									torrents << bt
+									torrentfiles << content
+								end
+								inc+= content.size
+								itemsize+= content.size
+							end
+						else 
+							$stderr.puts "Fetching: #{content.url} (#{content.size.to_s} bytes)" if @opt.verbose and i == 1
+							if not @opt.simulate 
+								headers = {"User-Agent" => USER_AGENT}
+								headers["Referer"] = content.feedurl if content.feedurl and (content.feedurl =~ %r{^http:} or content.feedurl =~ %r{^ftp:})
+								content.download_url = content.url unless content.download_url
+								open(content.download_url, headers) do |fin|
+									if fin.base_uri.instance_of?(URI::HTTP) 
+										if fin.status[0] =~ Regexp.new('^3') 
+											content.download_url = fin.meta['location']
+											raise "redirecting"
+										elsif fin.status[0] !~ Regexp.new('^2') 
+											raise 'failed'
+										end
+									end
+									# write content to cache
+									content.redirection_url = fin.base_uri.to_s # content.redirection_url is used for finding the correct filename in case of redirection
+									content.redirection_url = nil if content.redirection_url.eql?(content.url)
+									content.file = filename(content, @cache_dir)
+									content.file.open("wb") do |fout|
+										fin.each_byte() do |b|
+											fout.putc b
+										end
+									end
+								end
+								content.size = content.file.size
+								@history.add content 
+							end
+							playlist.add(content)
+							inc+= content.size
+							itemsize+= content.size
+						end
+						break
+					rescue Interrupt
+					rescue SystemExit
+						exit 1
+					rescue Exception
+					end 
+					$stderr.puts "Attempt #{i} aborted" if @opt.verbose
+					if content.file and i == @opt.retries
+						if content.file.exist?
+							parent = content.file.parent
+							content.file.delete
+							if parent.parent != @opt.dir and parent.entries.size == 2
+								#delete empty feed subfolder
+								parent.delete
+							end
+						end
+						content.file = nil
+					end
+					sleep 5
+				end
+				redo unless content.file # skip unavailable enclosures
+				redo if @opt.itemsize > itemsize
+				itemsize = 0
+			end
+			total+=inc
+		end 
+		#shut down torrents
+		if torrents.length > 0
+			$stderr.puts "Fetching torrents (duration: 30min to a couple of hours) " if @opt.verbose
+			bt = torrents[0]
+			completion = torrents.collect() do |e|
+				e.percent_completed
+			end
+			while torrents.length > 0
+				sleep 30*60
+				for i in 0...torrents.length
+					c = torrents[i].percent_completed
+					complete = torrents[i].complete? 
+					$stderr.puts "Fetched: #{c}% of #{torrentfiles[i].url} " if @opt.verbose
+					if complete or c == completion[i]
+						begin 
+							torrents[i].shutdown
+						rescue SystemExit
+							exit 1
+						rescue Interrupt, Exception
+						end 
+						if complete
+							playlist.add(torrentfiles[i])
+							@history.add torrentfiles[i]
+						else                                                        
+							$stderr.puts "Aborted: #{torrentfiles[i].url}" if @opt.verbose
+							begin 
+								torrentfiles[i].file.delete if torrentfiles[i].file.exist?
+								torrentfiles[i] = nil
+							rescue Interrupt, SystemExit
+								exit 1
+							rescue Exception
+							end 
+						end
+						torrents[i] = nil
+						torrentfiles[i] = nil
+						completion[i] = nil
+						next
+					end
+					completion[i] = c
+				end 
+				torrents.compact!
+				torrentfiles.compact!
+				completion.compact!
+			end
+			begin 
+				bt.shutdown_all
+			rescue Interrupt, SystemExit
+				exit 1
+			rescue Exception
+			end
+			$stderr.puts "BitTorrent stopped" if @opt.verbose
+		end
+		playlist.finish
+		@history.trim(@opt.memsize) unless @opt.simulate or @opt.strategy == :cache
+		playlist.to_s
+	end 
+private
+	def fetchdoc(link)
+		doc = ""
+		1.upto(@opt.retries) do |i|
+			begin 
+				if link.url =~ %r{^http:} or link.url =~ %r{^ftp:}
+					if link.referrer and (link.referrer =~ %r{^http:} or link.referrer =~ %r{^ftp:})
+						open(link.url, "User-Agent" => USER_AGENT, "Referer" => link.referrer) do |f|
+							break if f.content_type.index "audio/"
+							break if f.content_type.index "video/"
+							f.each_line() do |e|
+								doc += e
+							end
+						end
+					else 
+						open(link.url, "User-Agent" => USER_AGENT) do |f|
+							break if f.content_type.index "audio/"
+							break if f.content_type.index "video/"
+							f.each_line() do |e|
+								doc += e
+							end
+						end
+					end
+				else 
+					open(link.url) do |f|
+						f.each_line() do |e|
+							doc += e
+						end
+					end
+				end
+				break
+			rescue Interrupt
+			rescue SystemExit
+				exit 1
+			rescue Exception
+			end 
+			$stderr.puts "Attempt #{i} aborted" if @opt.verbose
+			doc = ""
+			sleep 5
+		end
+		res = OpenStruct.new
+		begin 
+			res.dom = Document.new doc
+		rescue Exception
+		end 
+		if res.dom
+			res.url = link.url
+		else 
+			res = nil
+		end
+		res
+	end 
+	def filename(content, dir) #produce filename for content to be downloaded
+		begin #per-feed subfolder
+			if @opt.per_feed and content.feed_title and content.feed_title.size > 0
+				newdir = dir+content.feed_title
+				newdir = dir+content.feed_title.gsub(/[\\\/:*?\"<>|!]/, ' ').gsub(/-+/,'-').gsub(/\s+/,' ').strip if @opt.restricted_names
+				if newdir.exist?
+					if newdir.directory?
+						dir = newdir
+					end
+				else 
+					newdir.mkdir
+					dir = newdir
+				end
+			end
+		rescue Exception
+		#	$stderr.puts "error: #{$!}"
+		end
+		ext = [""]
+		if content.metainfo
+			begin 
+				ext = ["."+content.metainfo.info.name.split(".").reverse[0]]
+			rescue Exception
+			end 
+		else 
+			ext = case content.mime.downcase
+				when "audio/mpeg"
+					[".mp3"]
+				when "audio/x-mpeg"
+					[".mp3"]
+				when "audio/x-ms-wma"
+					[".wma"]
+				when "audio/x-m4a"
+					[".m4a"]
+				when "video/mpeg"
+					[".mpg",".mpeg",".mpe",".mpa",".mp2",".mpv2"]
+				when "video/quicktime"
+					[".mov",".qt"]
+				when "video/x-msvideo"
+					[".avi"]
+				when "video/x-ms-wmv"
+					[".wmv"]
+				when "video/x-ms-asf"
+					[".asf"]
+				when "video/mp4"
+					[".m4v", ".mp4",".mpg4"]
+				when "video/x-m4v"
+					[".m4v", ".mp4",".mpg4"]
+				else
+					[""]
+				end 
+		end
+		#name from url?
+		name = nil
+		begin 
+			if content.metainfo
+				name = content.metainfo.info.name
+				name = nil if (dir+name).exist?
+			else 
+				urlname = nil
+				urlname = URI.split(content.redirection_url)[5].split("/")[-1] if content.redirection_url
+				urlname = URI.split(content.url)[5].split("/")[-1] unless urlname
+				ext.each() do |e|
+					if e.length == 0 or urlname[-e.length..-1].downcase == e
+						name = urlname
+						name = URI.unescape(name)
+						name = nil if (dir+name).exist?
+						break if name
+					end
+				end
+			end
+		rescue Exception
+		end 
+		#unique name?
+		loop do
+			name = Time.now.to_f.to_s+ext[0]
+			break unless (dir+name).exist?
+			sleep 1
+		end unless name
+		dir+name
+	end 
+end
+class OPML
+	def initialize(title = nil)
+		@doc = Document.new
+		@doc.xml_decl.dowrite
+		@doc.add_element Element.new("opml")
+		@doc.root.add_attribute "version", "1.1"
+		head = Element.new("head")
+		@doc.root.add_element head
+		if title
+			titlee = Element.new("title")
+			titlee.text = title
+			head.add_element titlee
+		end
+		@body = Element.new("body")
+		@doc.root.add_element @body
+		@size = 0
+	end
+	def add(feedurl, text=nil)
+		e = Element.new("outline")
+		e.add_attribute("text", text) if text
+		e.add_attribute "type", "link"
+		e.add_attribute "url", feedurl
+		@body.add_element e
+		@size += 1
+	end 
+	def write()
+		@doc.write $stdout, 0
+	end
+	def size()
+		@size
+	end 
+end 
+
+class Query
+	def initialize(opt, query)
+		@@ATOM_NS = Regexp.new '^http://purl.org/atom/ns#'
+		@@ITUNES_NS = 'http://www.itunes.com/dtds/podcast-1.0.dtd'
+		@opt = opt
+		if query
+			@query = query.downcase.split
+			@query = nil if @query.size == 0
+		end
+		@stats = Stats.new opt.dir
+	end
+	def search(urls)
+		res = []
+		begin 
+			newpaths = []
+			dochistory = []
+			paths = []
+			if urls.size == 0
+				$stderr.puts "Reading subscriptions from standard input" if @opt.verbose
+				begin 
+					xml = ""
+					$stdin.each() do |e|
+						xml += e
+					end
+					path = OpenStruct.new
+					path.doc = Document.new(xml)
+					if path.doc and path.doc.root
+						path.relevance = 0
+						newpaths << path
+					end
+				rescue Interrupt, SystemExit
+					raise
+				rescue Exception
+					$stderr.puts "Error: unreadable subscriptions"
+				end 
+			else 
+				newpaths = urls.uniq.collect() do |e|
+					path = OpenStruct.new
+					path.url = e
+					path
+				end
+				newpaths = newpaths.collect() do |path|
+					$stderr.puts "Fetching: #{path.url}" if @opt.verbose
+					dochistory << path.url
+					path.doc = fetchdoc(path)
+					if path.doc
+						path.relevance = 0
+						path
+					else 
+						$stderr.puts "Skipping unreadable document" if @opt.verbose
+						nil
+					end
+				end
+				newpaths.compact!
+			end
+			#send usage statistics
+			@stats.ping_search @opt, @query.join(' ')
+			#
+			loop do
+				break if @opt.feeds and res.size >= @opt.feeds
+				begin
+					newpaths.sort!() do |path1, path2|
+						path2.relevance <=> path1.relevance
+					end
+					paths = newpaths + paths
+					newpaths = []
+					path = nil
+					loop do
+						path = paths.shift
+						break unless path
+						if path.doc
+							break
+						else
+							if dochistory.detect{|e| e == path.url}
+								$stderr.puts "Skipping duplicate: #{path.url}" if @opt.verbose
+								next
+							end
+							$stderr.puts "Fetching: #{path.url}" if @opt.verbose
+							dochistory << path.url
+							path.doc = fetchdoc(path)
+							if path.doc
+								break
+							end
+							$stderr.puts "Error: skipping unreadable document"
+						end
+					end
+					break unless path
+					if path.doc.root.name == "opml"
+						#doc relevance
+						path.relevance += relevance_of(XPath.first(path.doc, "/opml/head/title/text()"))
+						#outgoing links
+						XPath.each(path.doc,"//outline") do |outline|
+							url = outline.attributes["xmlUrl"]
+							url = outline.attributes["url"] unless url
+							next unless url
+							begin 
+								url = URI.parse(path.url).merge(url).to_s if path.url
+							rescue Interrupt, SystemExit
+								raise
+							rescue Exception
+							end
+							newpath = OpenStruct.new
+							newpath.url = url
+							newpath.referrer = path.url
+							#link relevance
+							newpath.relevance = path.relevance
+							XPath.each(outline, "ancestor-or-self::outline") do |e|
+								newpath.relevance += relevance_of(e.attributes["text"])
+							end
+							#
+							newpaths << newpath
+						end
+					elsif path.doc.root.name == "pcast"
+						#outgoing links
+						XPath.each(path.doc,"/pcast/channel") do |channel|
+							link = XPath.first(channel, "link[@rel='feed']")
+							next unless link
+							url = link.attributes["href"]
+							next unless url
+							begin 
+								url = URI.parse(path.url).merge(url).to_s if path.url
+							rescue Interrupt, SystemExit
+								raise
+							rescue Exception
+							end
+							newpath = OpenStruct.new
+							newpath.url = url
+							newpath.referrer = path.url
+							#link relevance
+							newpath.relevance = path.relevance
+							newpath.relevance += relevance_of(XPath.first(channel, "title/text()"))
+							newpath.relevance += relevance_of(XPath.first(channel, "subtitle/text()"))
+							#
+							newpaths << newpath
+						end
+					elsif path.doc.root.namespace =~ @@ATOM_NS and path.url
+						#doc relevance
+						title = nil
+						begin 
+							XPath.each(path.doc.root,"/*/*") do |e|
+								next unless e.namespace =~ @@ATOM_NS
+								next unless e.name == "title" or e.name == "subtitle"
+								title = e.text if e.name == "title"
+								path.relevance += relevance_of(e.text)
+							end
+						rescue Interrupt, SystemExit
+							raise
+						rescue Exception
+							#$stderr.puts "error: #{$!}"
+						end 
+						if path.relevance > 0
+							$stderr.puts "Found: #{title} (relevance: #{path.relevance})" if @opt.verbose
+							if title
+								path.title = ""
+								title.value.each_line() do |e3| #remove line breaks
+									path.title+= e3.chomp+" "
+								end
+								path.title.strip!
+							end
+							res << path
+						end
+					elsif path.doc.root.name = "rss" and path.url
+						#doc relevance
+						title = XPath.first(path.doc, "//channel/title/text()")
+						path.relevance += relevance_of(title)
+						path.relevance += relevance_of(XPath.first(path.doc, "//channel/description/text()"))
+						begin 
+							XPath.each(path.doc.root,"//channel/*") do |e|
+								next unless e.name == "category"
+								if e.namespace == @@ITUNES_NS
+									XPath.each(e, "descendant-or-self::*") do |e2|
+										next unless e2.name == "category"
+										path.relevance += relevance_of(e2.attributes["text"])
+									end
+								else 
+									path.relevance += relevance_of(e.text) 
+								end
+							end
+						rescue Interrupt, SystemExit
+							raise
+						rescue Exception
+							#$stderr.puts "error: #{$!}"
+						end 
+						if path.relevance > 0
+							$stderr.puts "Found: #{title} (relevance: #{path.relevance})" if @opt.verbose
+							if title
+								path.title = ""
+								title.value.each_line() do |e3| #remove line breaks
+									path.title+= e3.chomp+" "
+								end
+								path.title.strip!
+							end
+							res << path
+						end
+					end
+				rescue Interrupt, SystemExit
+					raise
+				rescue Exception
+					$stderr.puts "Error: skipping unreadable document"
+				end 
+			end
+		rescue Interrupt, SystemExit
+			$stderr.puts "Execution interrupted"
+		rescue Exception
+		end 
+		result = nil
+		while not result
+			begin 
+				res.sort!() do |path1, path2|
+					path2.relevance <=> path1.relevance
+				end
+				opml = OPML.new "Search results for \"#{@query.collect(){|e| "#{e} "}}\""
+				res.each() do |path|
+					opml.add path.url, path.title
+				end
+				result = opml
+			rescue Exception
+			end 
+		end
+		result.write
+		result
+	end 
+private
+	def relevance_of(meta)
+		return 0 unless meta
+		unless meta.kind_of? String #Text todo: resolve entities
+			meta = meta.value
+		end
+		meta = meta.downcase
+		meta = meta.split
+		res = 0
+		@query.each() do |e|
+			meta.each() do |e2|
+				res += 1 if e2.index(e)
+			end
+		end
+		res
+	end 
+	def fetchdoc(link)
+		doc = ""
+		1.upto(@opt.retries) do |i|
+			begin 
+				if link.url =~ %r{^http:} or link.url =~ %r{^ftp:}
+					if link.referrer and (link.referrer =~ %r{^http:} or link.referrer =~ %r{^ftp:})
+						open(link.url, "User-Agent" => USER_AGENT, "Referer" => link.referrer) do |f|
+							break if f.content_type.index "audio/"
+							break if f.content_type.index "video/"
+							f.each_line() do |e|
+								doc += e
+							end
+						end
+					else 
+						open(link.url, "User-Agent" => USER_AGENT) do |f|
+							break if f.content_type.index "audio/"
+							break if f.content_type.index "video/"
+							f.each_line() do |e|
+								doc += e
+							end
+						end
+					end
+				else 
+					open(link.url) do |f|
+						f.each_line() do |e|
+							doc += e
+						end
+					end
+				end
+				break
+			rescue Interrupt
+			rescue SystemExit
+				break
+			rescue Exception
+			end 
+			$stderr.puts "Attempt #{i} aborted" if @opt.verbose
+			doc = ""
+			sleep 5
+		end
+		res = nil
+		begin 
+			res = Document.new doc
+		rescue Exception
+		end 
+		res = nil unless res and res.root
+		res
+	end 
+end
+
+opt.size *= 1_000_000 if opt.size
+opt.upload_rate *= 1024 if opt.upload_rate
+opt.itemsize *= 1_000_000 
+arguments = arguments + ARGV
+
+if opt.check_for_update
+	$stderr.puts "Enabling update check." if opt.verbose
+end
+
+if opt.vote
+	$stderr.puts "Enabling the sending of anonymous usage statistics." if opt.verbose
+end
+
+begin 
+	require "rubytorrent"
+	opt.rubytorrent = true
+	$stderr.puts "RubyTorrent detected." if opt.verbose
+rescue Interrupt, SystemExit
+	exit 1
+rescue Exception
+end
+
+if opt.function == :download
+	cache = Cache.new opt
+	cache.createplaylist arguments
+elsif opt.function == :search
+	dir = Query.new opt, arguments.shift
+	dir.search arguments
+end
+
+if opt.check_for_update
+	update = Update.new opt.dir
+	update.check
+end
+
+if opt.verbose and false
+        $stderr.puts ""
+        $stderr.puts "   *********************************************************************"
+        $stderr.puts "   ****   Qworum - A platform for web-based services      (sponsor) ****"
+        $stderr.puts "   *********************************************************************"
+        $stderr.puts "   ****   Sell and buy services:                                    ****"
+        $stderr.puts "   ****   Host services on your own domain; sell them to websites   ****"
+        $stderr.puts "   ****   or businesses on the service marketplace.                 ****"
+        $stderr.puts "   ****                                                             ****"
+        $stderr.puts "   ****   Build enterprise information systems:                     ****"
+        $stderr.puts "   ****   Use Qworum in your information system, and enjoy the      ****"
+        $stderr.puts "   ****   benefits of a powerful SOA technology.                    ****"
+        $stderr.puts "   ****                                                             ****"
+        $stderr.puts "   ****   Learn more at http://www.qworum.com/                      ****"
+        $stderr.puts "   *********************************************************************"
+        $stderr.puts ""
+end
+
+$stderr.puts "End of podcatching session." if opt.verbose
+

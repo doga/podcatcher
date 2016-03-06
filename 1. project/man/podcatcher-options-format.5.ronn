@@ -1,0 +1,128 @@
+
+<%= name %>-options-format(5) -- <%= name %> options file format
+==============================================================
+
+## DESCRIPTION
+
+Files specified with `<%= name %> --options` are YAML files that are formatted as follows:
+
+* An option is specified as a key-value pair.
+* Option keys are long versions of `<%= name %>` option switches. For example, the `--strategy` option switch translates as the `strategy` key.
+* The `options` option key is ignored if present.
+
+## EXAMPLE
+
+  # <%= name %> options file <br>
+
+  # Directory for storing application state <br>
+  dir: "."
+
+  # Directory for storing downloaded content <br>
+  # (do not use special shell characters such as ~ in filenames, <br>
+  # <%= name %> does not know how to handle them) <br>
+  #cachedir: "/media/disk/podcasts" <br>
+
+  # Size of content cache in megabytes <br>
+  size: 512
+
+  # Download strategy <br>
+  strategy: chron_one
+
+  # Regular expression that matches the types of content to be downloaded <br>
+  #content: "^audio/mpeg$|^audio/x-mpeg$" <br>
+  #content: "^audio/" <br>
+  #content: "^video/" <br>
+  #content: "^audio/|^video/" <br>
+  #content: "^image/" <br>
+  content: ""
+
+  # Ignore feeds that do not match these languages <br>
+  #language: "de" <br>
+  #language: "en,fr-ca" <br>
+  language: ""
+
+  # Playlist type <br>
+  #type: smil <br>
+  #type: pls <br>
+  #type: asx <br>
+  #type: tox <br>
+  #type: xspf <br>
+  type: m3u
+
+  # Create one subfolder per feed in content cache? <br>
+  #perfeed: true <br>
+  perfeed: false
+
+  # Do not download content (useful for testing)? <br>
+  #asif: true <br>
+  asif: false
+
+  # Run verbosely? <br>
+  #verbose: false <br>
+  verbose: true 
+
+  # Read arguments from specified files (the files contain one argument per line) <br>
+  #arguments: "/home/user/<%= name %>_arguments.txt" <br>
+  #arguments: "http://www.config.com/<%= name %>_arguments.txt" <br>
+
+  # Maximum number of download attempts for a given file <br>
+  retries: 4
+
+  # The order in which feeds are traversed when downloading content <br>
+  #order: sequential <br>
+  #order: alphabetical <br>
+  #order: reverse <br>
+  order: random
+
+  # Used function <br>
+  #function: search <br>
+  function: download
+
+  # Ignore content that is older than the horizon date <br>
+  #horizon: "2007.03.22" <br>
+  #horizon: "2007.03" <br>
+  #horizon: "2007" <br>
+
+  # The number of content downloads to be remembered, in order to avoid  <br>
+  # downloading them again <br>
+  memsize: 2000
+
+  # Directory for storing torrent files, when using an external BitTorrent client <br>
+  #torrentdir: "/home/user/torrents" <br>
+
+  # Maximum number of feeds to be handled in one session <br>
+  feeds: 1000
+
+  # Maximum upload rate (in kilobytes per second) for the internal BitTorrent  <br>
+  # client (comment out following line if upload rate is not bounded) <br>
+  uploadrate: 10
+
+  # In the content directory, create subdirectories and files using names that are <br>
+  # acceptable for restrictive filesystems such as VFAT <br>
+  #restrictednames: false <br>
+  restrictednames: true
+
+  # Check if a newer version is available? <br>
+  #checkforupdate: false <br>
+  checkforupdate: true
+
+  # The minimum desired content size in megabytes; if downloaded content is  <br>
+  # less than this size, other content is downloaded using the same feed until  <br>
+  # this size is reached <br>
+  itemsize: 0
+
+  # Delete all previously downloaded content? <br>
+  #empty: true <br>
+  empty: false
+
+
+## SEE ALSO
+
+<%= name %>(1)
+
+
+## COPYRIGHT
+
+Copyright 2016 Doga Armangil <doga.armangil@alumni.epfl.ch>
+
+
