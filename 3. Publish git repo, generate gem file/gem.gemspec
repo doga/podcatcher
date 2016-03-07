@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   # BEWARE: this authoritative data is used for resolving ERB markup in project files!
 
   s.name        = 'podcatcher'
-  s.version     = '4.0.0.pre2'
+  s.version     = '4.0.0.pre3'
   s.authors     = ['Doga Armangil']
   s.email       = ['doga.armangil@alumni.epfl.ch']
   s.homepage    = 'https://github.com/doga/podcatcher'
