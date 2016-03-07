@@ -29,10 +29,19 @@ namespace :man do
     mkdir_p "#{PARAMS[:next_step_dir]}/man"
   end
 
-  desc 'build man pages'
+  desc 'generate man pages'
   task all: [:man] do
     Dir['man/*.ronn'].each do |manpage_model|
-      sh "ronn --pipe --manual '#{PARAMS[:gemspec].name} v#{PARAMS[:gemspec].version} manual' -s toc --roff '#{manpage_model}' > '#{PARAMS[:next_step_dir]}/#{manpage_model.pathmap('%X')}'"
+      # Manual name
+      name = PARAMS[:gemspec].name
+      version = PARAMS[:gemspec].version.split('.')[0..1].join '.'
+      manual = "#{name} v#{version} manual"
+
+      # Output file
+      outfile = "#{PARAMS[:next_step_dir]}/#{manpage_model.pathmap('%X')}"
+
+      # Generate
+      sh "ronn --pipe --manual '#{manual}' -s toc --roff '#{manpage_model}' > '#{outfile}'"
     end
   end
 
@@ -88,6 +97,7 @@ begin
       end
     end
   end
+
   def read_gemspec
     gemspec = Dir['../*/*.gemspec'].first
     return unless gemspec
@@ -96,6 +106,7 @@ begin
     gemspec = gemspec.read
     self.instance_eval gemspec
   end
+
   read_gemspec
 end
 

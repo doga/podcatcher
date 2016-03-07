@@ -67,6 +67,7 @@ PARAMS = {
 begin
   require 'ostruct'
   require 'pathname'
+
   module Gem
     # Fake Gem::Specification class
     class Specification
@@ -86,6 +87,7 @@ begin
       end
     end
   end
+  
   def read_gemspec
     gemspec = Dir['../*/*.gemspec'].first
     return unless gemspec
@@ -94,6 +96,7 @@ begin
     gemspec = gemspec.read
     self.instance_eval gemspec
   end
+
   read_gemspec
 end
 

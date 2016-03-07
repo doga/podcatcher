@@ -5,17 +5,37 @@ STEP_DIRS = Dir['*'].
   reject{|fn| fn !~ /^\d/ }.
   sort
 
+
 # Tasks #######################################
 
 task default: [:clean, :all]
 
-desc 'publish to rubyforge.org and git origin (do "git add untracked_file" beforehand if needed !!!)'
-task all: STEP_DIRS
+TASKS = {
+  names:        STEP_DIRS.map{|dir| /^\d+/.match(dir)[0].to_i.to_s.to_sym},
+  descriptions: STEP_DIRS.map{|dir| /^\d+\W*(\w.*)$/.match(dir)[1].strip},
+  dependencies: Array.new(STEP_DIRS.size)
+}
 
-STEP_DIRS.each do |step_dir|
-  task step_dir do
-    sh "cd '#{step_dir}'; rake"
+0.upto(STEP_DIRS.size-1) do |i|
+  TASKS[:dependencies][i] = []
+  next if i.zero?
+
+  (i-1).downto(0) do |j|
+    TASKS[:dependencies][i].unshift TASKS[:names][j]
   end
+end
+
+#desc 'publish to rubyforge.org and git origin (do "git add untracked_file" beforehand if needed !!!)'
+desc TASKS[:descriptions].last
+task all: ([:clean] + TASKS[:names])
+
+0.upto(STEP_DIRS.size-1) do |i|
+
+  desc TASKS[:descriptions][i]
+  task TASKS[:names][i] => TASKS[:dependencies][i] do
+    sh "cd '#{STEP_DIRS[i]}'; rake"
+  end
+
 end
 
 

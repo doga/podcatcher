@@ -5,7 +5,7 @@
 # http://opensource.org/licenses/gpl-license.php for more information.
 # Author: Doga Armangil, armangild@yahoo.com
 
-PODCATCHER_WEBSITE = 'https://github.com/doga/podcatcher'
+PODCATCHER_WEBSITE = '<%= homepage %>'
 PODCATCHER_VERSION = '<%= version %>'
 
 # todo: allow files to be selected not only by its MIME type, but also other attributes. Example: --content '^video/ width:680-1024 height:400'
@@ -42,8 +42,8 @@ include REXML
 #PODCATCHER_ENV = :development
 PODCATCHER_ENV = :production
 
-USER_AGENT = "podcatcher/#{PODCATCHER_VERSION} Ruby/#{RUBY_VERSION} #{RUBY_PLATFORM}"
-UPDATE_CHECK_INTERVAL = 6 #months
+USER_AGENT = "<%= name %>/#{PODCATCHER_VERSION} Ruby/#{RUBY_VERSION} #{RUBY_PLATFORM}"
+UPDATE_CHECK_INTERVAL = 6 # months
 
 opt = OpenStruct.new
 opt.PLAYLIST_TYPES = [:m3u, :smil, :pls, :asx, :tox, :xspf]
@@ -52,7 +52,7 @@ opt.size = 512
 opt.content_type = Regexp.new '' 
 opt.DESCRIPTION = <<END
 
-Armangil's podcatcher is a podcast client for the command line.
+Armangil's <%= name %> is a podcast client for the command line.
 It can download any type of content enclosed in RSS or Atom files, such as 
 MP3 or other audio content, video and images. A search function for 
 subscribing to feeds is also included. It provides several download 
@@ -72,14 +72,16 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-Visit $website for more information.
+As of version 4, the default target directory is ~/.<%= name %> instead of
+the current directory.
+
+Visit <%= homepage %> for more information.
 
 Usage: #{$0} [options] [arguments] 
 END
 
-opt.DESCRIPTION.gsub! '$website', PODCATCHER_WEBSITE
-
-opt.dir = Pathname.new Dir.pwd
+opt.dir = Pathname.new(Dir.home) + '.<%= name %>'
+opt.dir.mkdir unless opt.dir.exist?
 opt.CACHEDIR= 'cache'
 opt.cachedir = opt.dir + opt.CACHEDIR
 opt.memsize = 1_000
@@ -113,7 +115,7 @@ option_parser = OptionParser.new() do |c|
 	c.separator "Options:"
 	c.on("-d", "--dir DIR", 
 		"Directory for storing application state.",
-		"Default value is current directory.\n") do |e|
+		"Default value is ~/.<%= name %>\n") do |e|
 		contained=false
 		#cache directory inside old state directory?
 		statedir=opt.dir
@@ -204,7 +206,7 @@ option_parser = OptionParser.new() do |c|
 		"the amount of content that can be downloaded",
 		"in one session.",
 		"Content downloaded during previous sessions",
-		"may be deleted by podcatcher in order to",
+		"may be deleted by <%= name %> in order to",
 		"make place for new content.\n") do |e|
 		opt.size = e.to_i
 		opt.size = nil if opt.size<1
@@ -383,7 +385,7 @@ option_parser = OptionParser.new() do |c|
 		"content of that same feed until this size",
 		"is reached. ",
 		"Default value is #{opt.itemsize}.",
-		"The intent here is to ensure that podcatcher",
+		"The intent here is to ensure that <%= name %>",
 		"downloads about as much content from podcasts",
 		"that frequently post small content (in", 
 		"terms of minutes) as it does from podcasts",
@@ -434,7 +436,7 @@ option_parser = OptionParser.new() do |c|
 	# end
 	# c.on("--[no-]vote", 
 	# 	"Automatically vote for the downloaded",
-	# 	"podcasts at podcatcherstats.com.",
+	# 	"podcasts at <%= name %>stats.com.",
 	# 	"Disabled by default.\n") do |e|
 	# 	opt.vote = e
 	# end
@@ -808,8 +810,8 @@ class Update
 	def initialize(dir)
 		@now = Time.now
 		@data = {'last-check' => @now, 'latest-version' => PODCATCHER_VERSION, 'latest-version-description' => ''}
-		@server = URI.parse('http://www.podcatcherstats.com/podcatcher/latest_release')
-		@server = URI.parse('http://0.0.0.0:3000/podcatcher/latest_release') if PODCATCHER_ENV == :development
+		@server = URI.parse('http://www.<%= name %>stats.com/<%= name %>/latest_release')
+		@server = URI.parse('http://0.0.0.0:3000/<%= name %>/latest_release') if PODCATCHER_ENV == :development
 		return unless dir
 		return unless dir.directory?
 		@file = dir + 'updates'
@@ -964,8 +966,8 @@ class Stats
 		srand
 		@now = Time.now
 		@data = {'ping-probability' => 1.0}
-		@server = URI.parse('http://www.podcatcherstats.com/podcatcher/ping')
-		@server = URI.parse('http://0.0.0.0:3000/podcatcher/ping') if PODCATCHER_ENV == :development
+		@server = URI.parse('http://www.<%= name %>stats.com/<%= name %>/ping')
+		@server = URI.parse('http://0.0.0.0:3000/<%= name %>/ping') if PODCATCHER_ENV == :development
 		return unless dir
 		return unless dir.directory?
 		@file = dir + 'votes'

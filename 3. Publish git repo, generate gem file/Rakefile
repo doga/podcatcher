@@ -80,11 +80,11 @@ begin
         end
 
         yield @spec
-        #$stderr.puts "#{@spec.inspect}" 
         ::PARAMS[:gemspec] = @spec
       end
     end
   end
+
   def read_gemspec
     gemspec = Dir['../*/*.gemspec'].first
     return unless gemspec
@@ -92,7 +92,7 @@ begin
     return unless gemspec.file?
     gemspec = gemspec.read
     self.instance_eval gemspec
-    #$stderr.puts "#{PARAMS.inspect}" 
   end
+
   read_gemspec
 end

@@ -34,6 +34,9 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
+As of version 4, the default target directory is ~/.<%= name %> instead of
+the current directory.
+
 
 ## OPTIONS
 
@@ -52,9 +55,9 @@ target different directories.
     state directory is inside this directory.
 
   * `-s`, `--size` <SIZE>:
-    Size, in megabytes, of the cache directory
-    (specified by the `--cachedir` option).
+    Size, in megabytes, of the cache directory.
     0 means unbounded. Default value is 512.
+    
     This option also sets the upper limit for
     the amount of content that can be downloaded
     in one session.
