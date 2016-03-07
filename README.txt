@@ -22,6 +22,9 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
+As of version 4, the default target directory is ~/.podcatcher instead of
+the current directory.
+
 Visit https://github.com/doga/podcatcher for more information.
 
 
@@ -36,7 +39,7 @@ $ gem install podcatcher --trust-policy HighSecurity
 $
 $ # Check the used version
 $ podcatcher --version
-4.0.0.pre
+4.0.0.pre2
 $
 $ # Optionally enable podcatcher MAN pages on Unix-like systems
 $ gem install gem-man # do this once
@@ -49,7 +52,7 @@ podcatcher [options] [arguments]
 
 Options:
     -d, --dir DIR                    Directory for storing application state.
-                                     Default value is current directory.
+                                     Default value is ~/.podcatcher .
     -D, --cachedir DIR               Directory for storing downloaded content.
                                      Default value is the 'cache' subdirectory
                                      of the state directory (specified by 

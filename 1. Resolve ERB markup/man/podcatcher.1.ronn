@@ -42,7 +42,7 @@ the current directory.
 
   * `-d`, `--dir` <DIR>: 
     Directory for storing application state.
-    Default value is current directory.
+    Default value is ~/.<%= name %> .
 
   * `-D`, `--cachedir` <DIR>:
     Directory for storing downloaded content.
@@ -57,7 +57,7 @@ the current directory.
   * `-s`, `--size` <SIZE>:
     Size, in megabytes, of the cache directory.
     0 means unbounded. Default value is 512.
-    
+
     This option also sets the upper limit for
     the amount of content that can be downloaded
     in one session.

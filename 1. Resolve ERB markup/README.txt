@@ -22,7 +22,10 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-Visit https://github.com/doga/<%= name %> for more information.
+As of version 4, the default target directory is ~/.<%= name %> instead of
+the current directory.
+
+Visit <%= homepage %> for more information.
 
 
 Installation
@@ -49,7 +52,7 @@ Usage
 
 Options:
     -d, --dir DIR                    Directory for storing application state.
-                                     Default value is current directory.
+                                     Default value is ~/.<%= name %> .
     -D, --cachedir DIR               Directory for storing downloaded content.
                                      Default value is the 'cache' subdirectory
                                      of the state directory (specified by 
