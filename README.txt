@@ -22,8 +22,7 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-As of version 4, the default target directory is ~/.podcatcher instead of
-the current directory.
+As of version 4, the default target directory is ~/.podcatcher instead of the current directory.
 
 Visit https://github.com/doga/podcatcher for more information.
 

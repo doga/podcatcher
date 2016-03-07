@@ -22,8 +22,7 @@ reliable method, as RubyTorrent is still in alpha phase.
 Concurrency is not handled: simultaneous executions of this program should
 target different directories.
 
-As of version 4, the default target directory is ~/.<%= name %> instead of
-the current directory.
+As of version 4, the default target directory is ~/.<%= name %> instead of the current directory.
 
 Visit <%= homepage %> for more information.
 
