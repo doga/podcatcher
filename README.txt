@@ -30,7 +30,7 @@ Visit https://github.com/doga/podcatcher for more information.
 Installation
 ------------
 $ # Optional security step (do this once)
-$ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/podcatcher/master/certs/doga.pem)
+$ gem cert --add <(curl -Ls https://raw.githubusercontent.com/doga/podcatcher/master/1.%20Resolve%20ERB%20markup/certs/doga.pem)
 $
 $ # Install
 $ # (Optional security paramater: --trust-policy HighSecurity)
